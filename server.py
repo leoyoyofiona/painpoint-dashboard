@@ -41,9 +41,17 @@ pipeline_lock = threading.Lock()
 # 阶段映射 — 匹配 main.py run_full() 的输出行关键词
 STAGE_MAP = [
     ("开始采集 douyin", "collect_douyin"),
-    ("开始采集 workbuddy", "collect_wb"),
+    ("开始采集 hackernews", "collect_hackernews"),
+    ("开始采集 reddit", "collect_reddit"),
+    ("开始采集 v2ex", "collect_v2ex"),
+    ("开始采集 weibo", "collect_weibo"),
+    ("开始采集 baidu", "collect_baidu"),
+    ("开始采集 stackoverflow", "collect_stackoverflow"),
+    ("开始采集 producthunt", "collect_producthunt"),
+    ("开始采集 workbuddy", "collect_workbuddy"),
     ("跳过采集", "skip_collect"),
     ("预筛帖子", "filtering"),
+    ("自动提取痛点", "extracting"),
     ("更新聚类趋势", "trending"),
     ("计算排名", "ranking"),
     ("生成HTML看板", "dashboard"),
@@ -110,10 +118,18 @@ def _update_stage(line):
 
         # 预估进度百分比
         stage_pct = {
-            "collect_douyin": 40,
-            "collect_wb": 55,
+            "collect_douyin": 15,
+            "collect_hackernews": 25,
+            "collect_reddit": 35,
+            "collect_v2ex": 45,
+            "collect_weibo": 50,
+            "collect_baidu": 55,
+            "collect_stackoverflow": 60,
+            "collect_producthunt": 63,
+            "collect_workbuddy": 65,
             "filtering": 70,
-            "ranking": 80,
+            "extracting": 75,
+            "ranking": 85,
             "trending": 90,
             "dashboard": 95,
             "done": 100,
@@ -310,7 +326,7 @@ if __name__ == "__main__":
 
     print(f"  LEO · 大众需求排行榜 服务器启动", flush=True)
     print(f"  端口: {PORT} | 绑定: {BIND}", flush=True)
-    print(f"  数据源: 知乎 · 贴吧 · 小红书 · 抖音", flush=True)
+    print(f"  数据源: 抖音 · 微博 · 百度 · V2EX · Hacker News · Reddit · Stack Overflow · Product Hunt", flush=True)
     print(f"  自动采集: 每日 08:00 (北京时间)", flush=True)
 
     scheduler = threading.Thread(target=scheduler_loop, daemon=True)

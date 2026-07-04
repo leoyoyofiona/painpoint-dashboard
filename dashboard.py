@@ -804,7 +804,7 @@ tbody td {{
 </div>
 
 <div style="text-align:center;padding:20px;color:#555;font-size:12px;margin-top:20px;">
-    LEO · 大众需求排行榜 | 每日 08:00 自动刷新 | 数据来源：抖音热榜
+    LEO · 大众需求排行榜 | 每日 08:00 自动刷新 | 数据来源：抖音 · 微博 · 百度 · V2EX · Hacker News · Reddit · Stack Overflow · Product Hunt
 </div>
 
 <!-- 我要诉求 模态框 -->
@@ -1084,10 +1084,18 @@ async function triggerRefresh() {{
 
                 const stageMap = {{
                     'starting': ['正在启动...', 2],
-                    'collect_douyin': ['正在采集抖音...', 40],
-                    'collect_wb': ['正在读取WorkBuddy补充数据...', 55],
+                    'collect_douyin': ['正在采集抖音...', 15],
+                    'collect_hackernews': ['正在采集Hacker News...', 25],
+                    'collect_reddit': ['正在采集Reddit...', 35],
+                    'collect_v2ex': ['正在采集V2EX...', 45],
+                    'collect_weibo': ['正在采集微博...', 50],
+                    'collect_baidu': ['正在采集百度热搜...', 55],
+                    'collect_stackoverflow': ['正在采集Stack Overflow...', 60],
+                    'collect_producthunt': ['正在采集Product Hunt...', 63],
+                    'collect_workbuddy': ['正在读取补充数据...', 65],
                     'filtering': ['正在预筛帖子...', 70],
-                    'ranking': ['正在计算排名...', 80],
+                    'extracting': ['正在提取痛点...', 75],
+                    'ranking': ['正在计算排名...', 85],
                     'trending': ['正在分析趋势...', 90],
                     'dashboard': ['正在生成看板...', 95],
                     'done': ['刷新完成！', 100],

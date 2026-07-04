@@ -1,11 +1,11 @@
 """
 main.py - 痛点收集器主编排器
 
-三种运行模式:
-    python main.py                      # 传统全流程（关键词提取，无AI）
-    python main.py --collect-only       # 仅采集+预筛，导出 pending_posts.json 供AI提取
-    python main.py --inject <file.json> # 注入AI提取的痛点 + 聚类 + 排序 + 看板
-    python main.py --skip-collect       # 跳过采集，用关键词模式重新处理
+运行模式:
+    python main.py                      # 全流程：采集→痛点提取→聚类→排名→看板
+    python main.py --collect-only       # 仅采集+预筛，导出 pending_posts.json
+    python main.py --inject <file.json> # 注入外部AI提取的痛点
+    python main.py --skip-collect       # 跳过采集，对已有数据重新提取痛点
     python main.py --verbose            # 详细输出
 """
 
@@ -25,6 +25,7 @@ from database import (
 from collectors import collect_all
 from processor import (
     should_process, export_pending_posts, inject_pain_points,
+    extract_pain_points_auto,
     cluster_pain_points, update_all_trends, compute_rankings,
 )
 from dashboard import generate_dashboard
@@ -188,7 +189,7 @@ def run_inject(json_file, verbose=False):
 
 
 def run_full(verbose=False, skip_collect=False):
-    """模式3: 传统全流程（关键词模式，无AI）"""
+    """全流程：采集→痛点提取→聚类→排名→看板"""
     print("=" * 60)
     print("  痛点收集器 PainPoint Collector")
     print(f"  运行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -212,9 +213,9 @@ def run_full(verbose=False, skip_collect=False):
 
     # 1. 采集
     if skip_collect:
-        print("\n[1/7] 跳过采集（--skip-collect）")
+        print("\n[1/8] 跳过采集（--skip-collect）")
     else:
-        print("\n[1/7] 开始采集...")
+        print("\n[1/8] 开始采集...")
         try:
             posts, collect_results = collect_all()
             total_posts = len(posts)
@@ -244,26 +245,37 @@ def run_full(verbose=False, skip_collect=False):
             all_errors.append(f"采集失败: {e}")
             print(f"  ❌ {e}")
 
-    # 2. 预筛 + 导出（标记未通过的为已处理）
-    print("\n[2/7] 预筛帖子...")
-    pending = export_pending_posts(conn, limit=100)
+    # 2. 预筛
+    print("\n[2/8] 预筛帖子...")
+    pending = export_pending_posts(conn, limit=500)
     print(f"  预筛通过: {len(pending)} 帖")
 
-    # 3. 导出JSON（供后续AI处理）
-    print("[3/7] 导出 pending_posts.json...")
+    # 3. 导出JSON（保留兼容）
+    print("[3/8] 导出 pending_posts.json...")
     with open(PENDING_POSTS_PATH, "w", encoding="utf-8") as f:
         json.dump(pending, f, ensure_ascii=False, indent=2)
-    print(f"  已导出: {len(pending)} 帖 → {PENDING_POSTS_PATH}")
+    print(f"  已导出: {len(pending)} 帖")
 
-    # 4-7: 聚类/排序/看板（如果有已注入的痛点）
-    print("\n[4/7] 更新聚类趋势...")
+    # 4. 自动痛点提取（核心步骤！）
+    print("\n[4/8] 自动提取痛点...")
+    try:
+        total_pain_points = extract_pain_points_auto(conn, verbose=True)
+        print(f"  提取痛点: {total_pain_points} 条")
+    except Exception as e:
+        print(f"  ⚠️ 痛点提取失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+    # 5. 更新聚类趋势
+    print("\n[5/8] 更新聚类趋势...")
     try:
         update_all_trends(conn)
         print("  完成")
     except Exception as e:
         print(f"  ⚠️ {e}")
 
-    print("\n[5/7] 计算排名...")
+    # 6. 计算排名
+    print("\n[6/8] 计算排名...")
     rankings = []
     try:
         rankings = compute_rankings(conn)
@@ -273,14 +285,16 @@ def run_full(verbose=False, skip_collect=False):
     except Exception as e:
         print(f"  ⚠️ {e}")
 
-    print("\n[6/7] 生成HTML看板...")
+    # 7. 生成HTML看板
+    print("\n[7/8] 生成HTML看板...")
     try:
         dashboard_path = generate_dashboard(conn)
         print(f"  看板已生成: {dashboard_path}")
     except Exception as e:
         print(f"  ⚠️ {e}")
 
-    print("\n[7/7] 清理旧数据...")
+    # 8. 清理旧数据
+    print("\n[8/8] 清理旧数据...")
     try:
         cleanup_old_data(conn)
     except Exception:
@@ -296,13 +310,18 @@ def run_full(verbose=False, skip_collect=False):
     print("  运行摘要")
     print("=" * 60)
     print(f"  采集帖子: {total_posts}")
-    print(f"  预筛通过: {len(pending)} (已导出 pending_posts.json)")
+    print(f"  预筛通过: {len(pending)} 帖")
+    print(f"  提取痛点: {total_pain_points} 条")
+    print(f"  生成排名: {len(rankings)} 条")
     print(f"  运行耗时: {duration:.1f} 秒")
-    print(f"\n  ⚠️ 当前为全流程模式，未做AI痛点提取")
-    print(f"  要使用AI提取，请运行:")
-    print(f"    1. python main.py --collect-only")
-    print(f"    2. (WorkBuddy AI 处理 pending_posts.json)")
-    print(f"    3. python main.py --inject extracted_painpoints.json")
+
+    if rankings:
+        print(f"\n  Top 5 需求:")
+        for r in rankings[:5]:
+            trend_icon = {"increasing": "↑", "new": "✦", "decreasing": "↓", "stable": "→"}.get(r["trend"], "")
+            print(f"    {r['rank']}. [{r['category']}] {r['representative_text'][:60]}  "
+                  f"(频次:{r['member_count']} 可行:{r['feas_comp']*5:.1f} {trend_icon} 评分:{r['score']:.2f})")
+
     print(f"\n  看板文件: {DASHBOARD_PATH}")
     print("=" * 60)
 
