@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import time
+import sqlite3
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
@@ -142,6 +143,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         p = self._path()
         if p == "/api/refresh":
             self._handle_refresh()
+        elif p == "/api/submit-request":
+            self._handle_submit_request()
         else:
             self.send_error(404)
 
@@ -171,9 +174,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(content)
 
-    def _serve_json(self, data):
+    def _serve_json(self, data, status=200):
         body = json.dumps(data, ensure_ascii=False, default=str).encode()
-        self.send_response(200)
+        self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Content-Length", str(len(body)))
@@ -199,6 +202,70 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _handle_submit_request(self):
+        """处理用户诉求提交"""
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+            raw_body = self.rfile.read(content_length).decode("utf-8")
+            data = json.loads(raw_body)
+
+            description = (data.get("description") or "").strip()
+            if not description or len(description) < 5:
+                self._serve_json({"error": "请至少输入5个字描述你的需求"}, 400)
+                return
+            if len(description) > 1000:
+                self._serve_json({"error": "描述不能超过1000字"}, 400)
+                return
+
+            email = (data.get("email") or "").strip()
+            if email and "@" not in email:
+                self._serve_json({"error": "邮箱格式不正确"}, 400)
+                return
+            if not email:
+                email = None
+
+            # 获取IP
+            ip = self.headers.get("X-Forwarded-For", self.client_address[0])
+            if "," in ip:
+                ip = ip.split(",")[0].strip()
+
+            # 写入数据库
+            db_path = os.path.join(BASE_DIR, "painpoints.db")
+            conn = sqlite3.connect(db_path)
+            conn.execute("PRAGMA journal_mode = WAL")
+            # 确保表存在
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    description TEXT NOT NULL,
+                    email TEXT,
+                    category TEXT,
+                    source TEXT DEFAULT 'web',
+                    ip TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+            conn.execute(
+                """INSERT INTO user_requests
+                   (description, email, category, source, ip, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (description, email, "user_submitted", "web", ip, datetime.now().isoformat())
+            )
+            conn.commit()
+            conn.close()
+
+            self._serve_json({"message": "诉求已提交，感谢你的参与！"})
+
+        except json.JSONDecodeError:
+            self._serve_json({"error": "请求格式错误"}, 400)
+        except Exception as e:
+            self._serve_json({"error": f"服务器错误: {e}"}, 500)
+
+    def _read_body(self):
+        """读取请求体"""
+        content_length = int(self.headers.get("Content-Length", 0))
+        return self.rfile.read(content_length).decode("utf-8")
 
     def log_message(self, *args):
         pass  # 静默请求日志

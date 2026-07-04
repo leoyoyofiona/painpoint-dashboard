@@ -118,6 +118,204 @@ body {{
     font-size: 14px;
     margin-top: 6px;
 }}
+
+/* ===== 醒目标语 ===== */
+.cta-banner {{
+    background: linear-gradient(135deg, rgba(255,107,107,0.25) 0%, rgba(78,205,196,0.25) 100%);
+    border: 2px solid rgba(255,107,107,0.4);
+    border-radius: 14px;
+    padding: 20px 28px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}}
+.cta-text {{
+    flex: 1;
+    min-width: 260px;
+}}
+.cta-text .cta-main {{
+    font-size: 20px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #FFD93D, #FF6B6B, #4ECDC4);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: ctaShimmer 3s ease infinite;
+}}
+@keyframes ctaShimmer {{
+    0%, 100% {{ filter: hue-rotate(0deg); }}
+    50% {{ filter: hue-rotate(15deg); }}
+}}
+.cta-text .cta-sub {{
+    color: rgba(255,255,255,0.75);
+    font-size: 13px;
+    margin-top: 4px;
+}}
+.cta-btn {{
+    background: linear-gradient(135deg, #FF6B6B, #FFD93D);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 30px;
+    padding: 14px 32px;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    box-shadow: 0 4px 20px rgba(255,107,107,0.4);
+    transition: all 0.3s;
+    letter-spacing: 1px;
+}}
+.cta-btn:hover {{
+    transform: scale(1.06);
+    box-shadow: 0 6px 28px rgba(255,107,107,0.55);
+}}
+.cta-btn:active {{ transform: scale(0.98); }}
+
+/* ===== 模态框 ===== */
+.modal-overlay {{
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+}}
+.modal-overlay.show {{ display: flex; }}
+.modal-box {{
+    background: #16213e;
+    border: 1px solid rgba(78,205,196,0.3);
+    border-radius: 18px;
+    padding: 0;
+    width: 500px;
+    max-width: 92vw;
+    box-shadow: 0 16px 60px rgba(0,0,0,0.5);
+    animation: modalIn 0.3s ease;
+}}
+@keyframes modalIn {{
+    from {{ transform: translateY(20px); opacity: 0; }}
+    to {{ transform: translateY(0); opacity: 1; }}
+}}
+.modal-header {{
+    background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+    border-radius: 18px 18px 0 0;
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}}
+.modal-header h2 {{
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0;
+}}
+.modal-close {{
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}}
+.modal-close:hover {{ background: rgba(255,255,255,0.35); }}
+.modal-body {{
+    padding: 24px;
+}}
+.modal-body label {{
+    display: block;
+    color: #aaa;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    margin-top: 14px;
+}}
+.modal-body label:first-child {{ margin-top: 0; }}
+.modal-body textarea {{
+    width: 100%;
+    min-height: 120px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #e0e0e0;
+    padding: 12px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+}}
+.modal-body textarea:focus {{
+    border-color: #4ECDC4;
+}}
+.modal-body textarea::placeholder {{
+    color: #555;
+}}
+.modal-body input[type="email"] {{
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: #e0e0e0;
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}}
+.modal-body input[type="email"]:focus {{
+    border-color: #4ECDC4;
+}}
+.modal-body input[type="email"]::placeholder {{
+    color: #555;
+}}
+.modal-body .email-hint {{
+    color: #4ECDC4;
+    font-size: 12px;
+    margin-top: 4px;
+}}
+.modal-footer {{
+    padding: 0 24px 24px;
+}}
+.modal-submit {{
+    width: 100%;
+    background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    letter-spacing: 1px;
+}}
+.modal-submit:hover {{
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(255,107,107,0.3);
+}}
+.modal-submit:disabled {{
+    opacity: 0.5;
+    cursor: wait;
+    transform: none;
+}}
+.modal-msg {{
+    text-align: center;
+    font-size: 14px;
+    margin-top: 8px;
+    min-height: 22px;
+}}
+.modal-msg.success {{ color: #4ECDC4; }}
+.modal-msg.error {{ color: #FF6B6B; }}
 .refresh-btn {{
     position: absolute;
     top: 24px;
@@ -488,18 +686,33 @@ tbody td {{
     .stats-row {{ gap: 12px; }}
     .desc-cell {{ max-width: 200px; }}
     input[type="text"] {{ width: 140px; }}
+    .cta-banner {{ flex-direction: column; text-align: center; }}
+    .cta-text .cta-main {{ font-size: 17px; }}
+    .cta-btn {{ width: 100%; }}
+    .modal-box {{ width: 95vw; }}
 }}
 </style>
 </head>
 <body>
 
 <div class="header">
-    <h1><span class="logo">LEO</span> 大众需求排行榜</h1>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <h1 style="margin:0;"><span class="logo">LEO</span> 大众需求排行榜</h1>
+        <button class="refresh-btn" id="refreshBtn" onclick="triggerRefresh()">
+            <span id="refreshIcon">🔄</span> <span id="refreshText">刷新数据</span>
+        </button>
+    </div>
     <div class="subtitle" id="lastUpdated">加载中...</div>
     <div class="stats-row" id="statsRow"></div>
-    <button class="refresh-btn" id="refreshBtn" onclick="triggerRefresh()">
-        <span id="refreshIcon">🔄</span> <span id="refreshText">刷新数据</span>
-    </button>
+
+    <!-- 醒目标语 + 我要诉求 -->
+    <div class="cta-banner">
+        <div class="cta-text">
+            <div class="cta-main">💡 你的痛点，就是下一个产品！</div>
+            <div class="cta-sub">📢 征集大众痛点 — 说出你的需求，我们一起解决</div>
+        </div>
+        <button class="cta-btn" onclick="openRequestModal()">✍️ 我要诉求</button>
+    </div>
 </div>
 
 <!-- Loading overlay -->
@@ -586,6 +799,32 @@ tbody td {{
         <div class="trend-col">
             <h4>⚪ 下降中</h4>
             <div id="trendDecreasing"></div>
+        </div>
+    </div>
+</div>
+
+<div style="text-align:center;padding:20px;color:#555;font-size:12px;margin-top:20px;">
+    LEO · 大众需求排行榜 | 每日 08:00 自动刷新 | 数据来源：V2EX + Reddit
+</div>
+
+<!-- 我要诉求 模态框 -->
+<div class="modal-overlay" id="requestModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h2>✍️ 提交你的诉求</h2>
+            <button class="modal-close" onclick="closeRequestModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <label>你的痛点 / 需求 <span style="color:#FF6B6B;">*</span></label>
+            <textarea id="reqDescription" placeholder="请详细描述：你遇到了什么问题？希望有什么工具/产品来解决？&#10;&#10;例如：&#10;- 找不到一个汇总全网降价信息的APP&#10;- 孩子写作业总是拖延，有没有好的监督工具&#10;- 租房找室友太难了，想要一个靠谱的平台"></textarea>
+
+            <label>你的邮箱（选填）</label>
+            <input type="email" id="reqEmail" placeholder="your@email.com">
+            <div class="email-hint">📬 留下邮箱，项目上线后第一时间获得内测资格</div>
+        </div>
+        <div class="modal-footer">
+            <button class="modal-submit" id="submitBtn" onclick="submitRequest()">🚀 提交诉求</button>
+            <div class="modal-msg" id="submitMsg"></div>
         </div>
     </div>
 </div>
@@ -884,6 +1123,79 @@ async function triggerRefresh() {{
             overlay.classList.remove('show');
             location.reload();
         }}, 1500);
+    }}
+}}
+
+// ===== 诉求提交 =====
+function openRequestModal() {{
+    document.getElementById('requestModal').classList.add('show');
+    document.getElementById('reqDescription').focus();
+    document.getElementById('submitMsg').textContent = '';
+    document.getElementById('submitMsg').className = 'modal-msg';
+}}
+
+function closeRequestModal() {{
+    document.getElementById('requestModal').classList.remove('show');
+}}
+
+document.getElementById('requestModal').addEventListener('click', function(e) {{
+    if (e.target === this) closeRequestModal();
+}});
+
+document.addEventListener('keydown', function(e) {{
+    if (e.key === 'Escape') closeRequestModal();
+}});
+
+async function submitRequest() {{
+    const desc = document.getElementById('reqDescription').value.trim();
+    const email = document.getElementById('reqEmail').value.trim();
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('submitMsg');
+
+    if (desc.length < 5) {{
+        msg.textContent = '请至少输入5个字描述你的需求';
+        msg.className = 'modal-msg error';
+        return;
+    }}
+    if (desc.length > 1000) {{
+        msg.textContent = '描述不能超过1000字';
+        msg.className = 'modal-msg error';
+        return;
+    }}
+    if (email && !email.includes('@')) {{
+        msg.textContent = '邮箱格式不正确';
+        msg.className = 'modal-msg error';
+        return;
+    }}
+
+    btn.disabled = true;
+    btn.textContent = '提交中...';
+    msg.textContent = '';
+    msg.className = 'modal-msg';
+
+    try {{
+        const resp = await fetch('/api/submit-request', {{
+            method: 'POST',
+            headers: {{ 'Content-Type': 'application/json' }},
+            body: JSON.stringify({{ description: desc, email: email || null }})
+        }});
+        const data = await resp.json();
+        if (resp.ok) {{
+            msg.textContent = '✅ ' + (data.message || '诉求已提交，感谢你的参与！');
+            msg.className = 'modal-msg success';
+            document.getElementById('reqDescription').value = '';
+            document.getElementById('reqEmail').value = '';
+            setTimeout(closeRequestModal, 2000);
+        }} else {{
+            msg.textContent = '❌ ' + (data.error || '提交失败，请重试');
+            msg.className = 'modal-msg error';
+        }}
+    }} catch (e) {{
+        msg.textContent = '❌ 网络错误，请稍后重试';
+        msg.className = 'modal-msg error';
+    }} finally {{
+        btn.disabled = false;
+        btn.textContent = '🚀 提交诉求';
     }}
 }}
 

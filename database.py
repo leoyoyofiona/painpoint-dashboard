@@ -103,6 +103,18 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_clustermembers_cluster ON cluster_members(cluster_id);
     CREATE INDEX IF NOT EXISTS idx_clustermembers_pp ON cluster_members(pain_point_id);
     CREATE INDEX IF NOT EXISTS idx_logs_date ON collection_logs(run_date);
+
+    CREATE TABLE IF NOT EXISTS user_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        description TEXT NOT NULL,
+        email TEXT,
+        category TEXT,
+        source TEXT DEFAULT 'web',
+        ip TEXT,
+        created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_ur_created ON user_requests(created_at);
     """)
 
     conn.commit()
@@ -384,6 +396,22 @@ def check_disk_space():
         return (stat.f_bavail * stat.f_frsize) / (1024 * 1024)
     except Exception:
         return 9999  # 无法检测时不阻止
+
+
+# ============================================================
+# 用户诉求提交
+# ============================================================
+
+def insert_user_request(conn, description, email=None, source="web", ip=None):
+    """插入用户提交的诉求"""
+    cursor = conn.execute(
+        """INSERT INTO user_requests
+           (description, email, category, source, ip, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)""",
+        (description, email, "user_submitted", source, ip, datetime.now().isoformat())
+    )
+    conn.commit()
+    return cursor.lastrowid
 
 
 def get_stats(conn):
