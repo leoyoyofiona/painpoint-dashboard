@@ -804,7 +804,7 @@ tbody td {{
 </div>
 
 <div style="text-align:center;padding:20px;color:#555;font-size:12px;margin-top:20px;">
-    LEO · 大众需求排行榜 | 每日 08:00 自动刷新 | 数据来源：V2EX + Reddit
+    LEO · 大众需求排行榜 | 每日 08:00 自动刷新 | 数据来源：抖音热榜
 </div>
 
 <!-- 我要诉求 模态框 -->
@@ -1083,24 +1083,19 @@ async function triggerRefresh() {{
                 const st = await sr.json();
 
                 const stageMap = {{
-                    'starting': ['正在启动采集...', 5],
-                    'collecting': ['正在从各平台采集帖子...', 30],
-                    'filtering': ['正在预筛帖子...', 50],
-                    'ranking': ['正在计算排名...', 70],
-                    'generating_dashboard': ['正在生成看板...', 90],
+                    'starting': ['正在启动...', 2],
+                    'collect_douyin': ['正在采集抖音...', 40],
+                    'collect_wb': ['正在读取WorkBuddy补充数据...', 55],
+                    'filtering': ['正在预筛帖子...', 70],
+                    'ranking': ['正在计算排名...', 80],
+                    'trending': ['正在分析趋势...', 90],
+                    'dashboard': ['正在生成看板...', 95],
                     'done': ['刷新完成！', 100],
                 }};
-                const [msg, pct] = stageMap[st.stage] || [st.stage, 50];
-                detail.textContent = msg;
+                const [msg, defaultPct] = stageMap[st.stage] || [st.stage, 50];
+                const pct = st.progress_pct || defaultPct;
+                detail.textContent = st.progress_msg || msg;
                 barFill.style.width = pct + '%';
-
-                // Show latest output line
-                if (st.output && st.output.length > 0) {{
-                    const lastLine = st.output[st.output.length - 1];
-                    if (lastLine && lastLine.trim()) {{
-                        detail.textContent = msg + ' | ' + lastLine.substring(0, 60);
-                    }}
-                }}
 
                 if (st.stage === 'done') {{
                     clearInterval(poll);

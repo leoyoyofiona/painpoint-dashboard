@@ -4,7 +4,6 @@ server.py - 大众需求排行榜 HTTP 服务器
 """
 import http.server
 import socketserver
-import subprocess
 import threading
 import json
 import os
@@ -13,35 +12,20 @@ import time
 import sqlite3
 import signal
 import traceback
+import io
+import contextlib
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
-# Render 环境变量 PORT，本地默认 7531
 PORT = int(os.environ.get("PORT", 7531))
 BIND = "0.0.0.0"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PYTHON = sys.executable
 DASHBOARD = os.path.join(BASE_DIR, "dashboard.html")
 
-# ——— 子进程环境（清除代理，避免网络问题）———
-def _clean_env():
-    """构建干净的子进程环境变量，移除代理设置"""
-    env = os.environ.copy()
-    for key in list(env.keys()):
-        if key.lower().endswith('_proxy'):
-            del env[key]
-    # 显式禁用代理
-    env['http_proxy'] = ''
-    env['https_proxy'] = ''
-    env['HTTP_PROXY'] = ''
-    env['HTTPS_PROXY'] = ''
-    env['no_proxy'] = '*'
-    env['NO_PROXY'] = '*'
-    return env
+# 确保项目目录在 sys.path 中（进程内导入需要）
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
-CLEAN_ENV = _clean_env()
-
-# Pipeline state（线程安全通过 GIL 保护简单读写）
 pipeline = {
     "running": False,
     "stage": "idle",
@@ -49,20 +33,39 @@ pipeline = {
     "error": None,
     "started_at": None,
     "finished_at": None,
+    "progress_pct": 0,
+    "progress_msg": "",
 }
 pipeline_lock = threading.Lock()
 
-STAGE_MAP = {
-    "采集": "collecting",
-    "预筛": "filtering",
-    "排名": "ranking",
-    "看板": "generating_dashboard",
-    "注入": "injecting",
-}
+# 阶段映射 — 匹配 main.py run_full() 的输出行关键词
+STAGE_MAP = [
+    ("开始采集 douyin", "collect_douyin"),
+    ("开始采集 workbuddy", "collect_wb"),
+    ("跳过采集", "skip_collect"),
+    ("预筛帖子", "filtering"),
+    ("更新聚类趋势", "trending"),
+    ("计算排名", "ranking"),
+    ("生成HTML看板", "dashboard"),
+    ("看板已生成", "done"),
+]
+
+
+class PipelineWriter(io.StringIO):
+    """自定义 stdout 写入器 — 实时推送进度到 pipeline 状态"""
+
+    def write(self, s):
+        result = super().write(s)
+        stripped = s.rstrip()
+        if stripped:
+            with pipeline_lock:
+                pipeline["output"].append(stripped)
+            _update_stage(stripped)
+        return result
 
 
 def run_pipeline():
-    """在后台线程中运行采集流水线 (collect-only → export JSON)"""
+    """在后台线程中运行完整采集+看板流水线（进程内执行）"""
     with pipeline_lock:
         pipeline["running"] = True
         pipeline["stage"] = "starting"
@@ -70,34 +73,21 @@ def run_pipeline():
         pipeline["error"] = None
         pipeline["started_at"] = datetime.now().isoformat()
         pipeline["finished_at"] = None
+        pipeline["progress_pct"] = 0
+        pipeline["progress_msg"] = "正在启动..."
 
     try:
-        proc = subprocess.Popen(
-            [PYTHON, "main.py", "--collect-only"],
-            cwd=BASE_DIR,
-            env=CLEAN_ENV,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-            preexec_fn=os.setsid,  # 独立进程组，避免信号传播
-        )
-        for line in proc.stdout:
-            line = line.rstrip()
-            if line:
-                pipeline["output"].append(line)
-                for keyword, stage in STAGE_MAP.items():
-                    if keyword in line:
-                        pipeline["stage"] = stage
-                        break
+        from main import run_full
 
-        proc.wait(timeout=300)  # 最多等 5 分钟
-        if proc.returncode != 0:
-            pipeline["error"] = f"Exit code {proc.returncode}"
+        writer = PipelineWriter()
+        with contextlib.redirect_stdout(writer):
+            run_full(verbose=False, skip_collect=False)
 
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        pipeline["error"] = "采集超时（5分钟）"
+        # 检查是否产生了实际输出（有采集数据的标志）
+        full_output = writer.getvalue()
+        if not full_output.strip():
+            pipeline["error"] = "流水线未产生任何输出"
+
     except Exception as e:
         pipeline["error"] = f"{type(e).__name__}: {e}"
         traceback.print_exc()
@@ -106,24 +96,31 @@ def run_pipeline():
             pipeline["running"] = False
             pipeline["stage"] = "done"
             pipeline["finished_at"] = datetime.now().isoformat()
-        # 重新生成看板（用已有数据）
-        _regenerate_dashboard()
+            pipeline["progress_pct"] = 100
+            pipeline["progress_msg"] = "刷新完成！"
 
 
-def _regenerate_dashboard():
-    """用数据库中已有数据重新生成看板（不重新采集）"""
-    try:
-        subprocess.run(
-            [PYTHON, "main.py", "--skip-collect"],
-            cwd=BASE_DIR,
-            env=CLEAN_ENV,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
-        pipeline["output"].append("看板已自动更新")
-    except Exception as e:
-        pipeline["output"].append(f"看板更新失败: {e}")
+def _update_stage(line):
+    """根据输出行更新进度阶段"""
+    with pipeline_lock:
+        for keyword, stage in STAGE_MAP:
+            if keyword in line:
+                pipeline["stage"] = stage
+                break
+
+        # 预估进度百分比
+        stage_pct = {
+            "collect_douyin": 40,
+            "collect_wb": 55,
+            "filtering": 70,
+            "ranking": 80,
+            "trending": 90,
+            "dashboard": 95,
+            "done": 100,
+        }
+        pct = stage_pct.get(pipeline["stage"], pipeline["progress_pct"])
+        pipeline["progress_pct"] = pct
+        pipeline["progress_msg"] = line[:80]
 
 
 def scheduler_loop():
@@ -160,7 +157,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if p == "/" or p == "/dashboard.html":
                 self._serve_dashboard()
             elif p == "/api/status":
-                self._serve_json(pipeline.copy())
+                s = {}
+                with pipeline_lock:
+                    s = {
+                        "running": pipeline["running"],
+                        "stage": pipeline["stage"],
+                        "output": pipeline["output"][-20:],  # 只返回最近20行
+                        "error": pipeline["error"],
+                        "started_at": pipeline["started_at"],
+                        "finished_at": pipeline["finished_at"],
+                        "progress_pct": pipeline["progress_pct"],
+                        "progress_msg": pipeline["progress_msg"],
+                    }
+                self._serve_json(s)
             elif p == "/api/health":
                 self._serve_json({"status": "ok"})
             else:
@@ -191,13 +200,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _serve_dashboard(self):
         if not os.path.exists(DASHBOARD):
             try:
-                subprocess.run(
-                    [PYTHON, "main.py", "--skip-collect"],
-                    cwd=BASE_DIR,
-                    env=CLEAN_ENV,
-                    capture_output=True,
-                    timeout=60,
-                )
+                from main import run_full
+                with contextlib.redirect_stdout(io.StringIO()):
+                    run_full(verbose=False, skip_collect=False)
             except Exception:
                 pass
 
@@ -225,13 +230,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
     def _handle_refresh(self):
         with pipeline_lock:
-            running = pipeline["running"]
-        if running:
-            self._serve_json({"error": "Pipeline already running"}, 409)
-            return
+            if pipeline["running"]:
+                self._serve_json({"error": "正在刷新中，请稍候..."}, 409)
+                return
 
-        # 先返回响应，再后台启动
-        self._serve_json({"message": "Pipeline started"})
+        # 先返回响应
+        self._serve_json({"message": "刷新已启动"})
 
         thread = threading.Thread(target=run_pipeline, daemon=False)
         thread.start()
@@ -293,21 +297,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._serve_json({"error": f"服务器错误: {e}"}, 500)
 
     def log_message(self, *args):
-        pass  # 静默请求日志
+        pass
 
 
-# ——— 多线程服务器 ———
 class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     allow_reuse_address = True
-    daemon_threads = True  # 主进程退出时自动清理线程
+    daemon_threads = True
 
 
 if __name__ == "__main__":
-    # 忽略子进程信号，避免子进程终止导致父进程退出
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
     print(f"  LEO · 大众需求排行榜 服务器启动", flush=True)
     print(f"  端口: {PORT} | 绑定: {BIND}", flush=True)
+    print(f"  数据源: 知乎 · 贴吧 · 小红书 · 抖音", flush=True)
     print(f"  自动采集: 每日 08:00 (北京时间)", flush=True)
 
     scheduler = threading.Thread(target=scheduler_loop, daemon=True)

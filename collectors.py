@@ -1,22 +1,21 @@
 """
 collectors.py - 多平台采集器
-主力：V2EX深度挖掘50+生活节点 + Reddit生活效率类子版块
+数据源：抖音热榜（实时）+ WorkBuddy AI 补充搜索（自动化）
 """
 import time
 import re
+import json
+import os
 import requests
-import xml.etree.ElementTree as ET
+import html
+from datetime import datetime
+from urllib.parse import quote
 
 from config import (
-    V2EX_ENDPOINTS, V2EX_INTERVAL, V2EX_TIMEOUT, V2EX_RELEVANT_NODES,
-    REDDIT_SUBREDDITS, REDDIT_INTERVAL, REDDIT_TIMEOUT,
     MAX_CONTENT_LENGTH, MAX_TITLE_LENGTH,
+    DOUYIN_TIMEOUT,
 )
 
-
-# ============================================================
-# 通用工具
-# ============================================================
 
 def truncate(text, max_len):
     if not text:
@@ -29,200 +28,166 @@ def clean_html(raw_html):
     if not raw_html:
         return ""
     clean = re.compile(r"<[^>]+>")
-    return clean.sub("", raw_html).strip()
-
-
-def request_with_retry(url, method="GET", params=None, headers=None,
-                       timeout=15, retries=3, interval=2):
-    for attempt in range(retries):
-        try:
-            if method == "GET":
-                resp = requests.get(url, params=params, headers=headers, timeout=timeout)
-            else:
-                resp = requests.post(url, json=params, headers=headers, timeout=timeout)
-
-            if resp.status_code == 429:
-                wait = interval * (2 ** attempt)
-                time.sleep(wait)
-                continue
-
-            resp.raise_for_status()
-            return resp
-
-        except (requests.RequestException, requests.Timeout) as e:
-            if attempt < retries - 1:
-                time.sleep(interval * (2 ** attempt))
-            else:
-                raise
-
-    return None
+    text = clean.sub("", raw_html)
+    text = html.unescape(text)
+    return re.sub(r'\s+', ' ', text).strip()
 
 
 # ============================================================
-# V2EX 采集器（深度挖掘50+生活节点）
+# 抖音采集器（热榜 + 搜索双路径）
 # ============================================================
 
-class V2EXCollector:
-    """V2EX API 采集器 — 只取生活/问答/创意/分享节点"""
+class DouyinCollector:
+    """抖音采集器 — 热榜 + 搜索「求推荐」等关键词"""
+
+    HOT_API = "https://www.iesdouyin.com/web/api/v2/hotsearch/billboard/word/"
+    SEARCH_API = "https://www.iesdouyin.com/web/api/v2/search/item/"
+
+    SEARCH_KEYWORDS = [
+        "求推荐 好用 工具",
+        "怎么办 日常 生活",
+        "有没有 方便 方法",
+        "吐槽 难用",
+        "想要 但是 没有",
+    ]
 
     def __init__(self):
-        self.headers = {"User-Agent": "PainPointCollector/1.0"}
-
-    def fetch(self):
-        posts = []
-        for endpoint in V2EX_ENDPOINTS:
-            try:
-                resp = request_with_retry(
-                    endpoint, headers=self.headers,
-                    timeout=V2EX_TIMEOUT, interval=V2EX_INTERVAL
-                )
-                if resp:
-                    data = resp.json()
-                    for item in data:
-                        post = self._parse_item(item)
-                        if post:
-                            posts.append(post)
-                time.sleep(V2EX_INTERVAL)
-            except Exception as e:
-                print(f"  [V2EX] 采集 {endpoint} 失败: {e}")
-                continue
-
-        seen = set()
-        unique = []
-        for p in posts:
-            key = p["post_id"]
-            if key not in seen:
-                seen.add(key)
-                unique.append(p)
-
-        print(f"  [V2EX] 采集到 {len(unique)} 条帖子")
-        return unique
-
-    def _parse_item(self, item):
-        node_name = item.get("node", {}).get("name", "")
-        if V2EX_RELEVANT_NODES and node_name.lower() not in V2EX_RELEVANT_NODES:
-            return None
-
-        title = truncate(item.get("title", ""), MAX_TITLE_LENGTH)
-        content = truncate(
-            clean_html(item.get("content_rendered", "") or
-                       item.get("content", "")),
-            MAX_CONTENT_LENGTH
-        )
-
-        return {
-            "platform": "v2ex",
-            "post_id": item.get("id"),
-            "title": title,
-            "content": content,
-            "author": item.get("member", {}).get("username", ""),
-            "url": f"https://www.v2ex.com/t/{item.get('id')}",
-            "reply_count": item.get("replies", 0),
-            "posted_at": self._parse_time(item.get("created")),
+        self.headers = {
+            "User-Agent": ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                           "AppleWebKit/537.36 (KHTML, like Gecko) "
+                           "Chrome/125.0.0.0 Safari/537.36"),
+            "Accept": "application/json",
+            "Referer": "https://www.douyin.com/",
         }
 
-    def _parse_time(self, timestamp):
-        if not timestamp:
-            return None
-        try:
-            from datetime import datetime
-            return datetime.fromtimestamp(timestamp).isoformat()
-        except Exception:
-            return None
-
-
-# ============================================================
-# Reddit RSS 采集器（仅 lifehacks/productivity）
-# ============================================================
-
-class RedditCollector:
-    """Reddit RSS 采集器"""
-
-    def __init__(self):
-        self.headers = {"User-Agent": "PainPointCollector/1.0"}
-
     def fetch(self):
-        posts = []
-        for subreddit in REDDIT_SUBREDDITS:
+        all_posts = []
+
+        # 1. 热榜
+        hot_posts = self._fetch_hotlist()
+        all_posts.extend(hot_posts)
+
+        # 2. 搜索（获取更多日常需求类内容）
+        for kw in self.SEARCH_KEYWORDS:
             try:
-                url = f"https://www.reddit.com/r/{subreddit}/hot.rss"
-                resp = request_with_retry(
-                    url, headers=self.headers,
-                    timeout=REDDIT_TIMEOUT, interval=REDDIT_INTERVAL
-                )
-                if resp:
-                    items = self._parse_rss(resp.text, subreddit)
-                    posts.extend(items)
-                time.sleep(REDDIT_INTERVAL)
+                search_posts = self._fetch_search(kw)
+                all_posts.extend(search_posts)
+                time.sleep(2)
             except Exception as e:
-                print(f"  [Reddit] r/{subreddit} 采集失败: {e}")
                 continue
 
         seen = set()
         unique = []
-        for p in posts:
-            key = p["post_id"]
-            if key not in seen:
-                seen.add(key)
+        for p in all_posts:
+            if p["post_id"] not in seen:
+                seen.add(p["post_id"])
                 unique.append(p)
 
-        print(f"  [Reddit] 采集到 {len(unique)} 条帖子")
+        print(f"  [抖音] 热榜{len(hot_posts)} + 搜索{len(all_posts)-len(hot_posts)} = {len(unique)} 帖")
         return unique
 
-    def _parse_rss(self, xml_text, subreddit):
+    def _fetch_hotlist(self):
         posts = []
         try:
-            root = ET.fromstring(xml_text)
-            ns = {"atom": "http://www.w3.org/2005/Atom"}
-            entries = root.findall("atom:entry", ns)
-            if not entries:
-                entries = root.findall("{http://www.w3.org/2005/Atom}entry")
-
-            for entry in entries:
-                post = self._parse_entry(entry, ns, subreddit)
-                if post:
-                    posts.append(post)
-        except ET.ParseError as e:
-            print(f"  [Reddit] RSS解析失败: {e}")
+            resp = requests.get(self.HOT_API, headers=self.headers, timeout=DOUYIN_TIMEOUT)
+            if resp.status_code == 200:
+                data = resp.json()
+                word_list = (data.get("word_list", []) or
+                             data.get("data", {}).get("word_list", []))
+                for item in word_list:
+                    title = item.get("word", "") or item.get("title", "")
+                    if not title:
+                        continue
+                    hot = item.get("hot_value", 0) or item.get("hotValue", 0)
+                    posts.append({
+                        "platform": "douyin",
+                        "post_id": f"dy_hot_{hash(title) % 10000000}",
+                        "title": truncate(title, MAX_TITLE_LENGTH),
+                        "content": title,
+                        "author": "抖音热榜",
+                        "url": f"https://www.douyin.com/search/{quote(title)}",
+                        "reply_count": int(hot) if hot else 0,
+                        "posted_at": datetime.now().isoformat(),
+                    })
+        except Exception:
+            pass
         return posts
 
-    def _parse_entry(self, entry, ns, subreddit):
+    def _fetch_search(self, keyword):
+        posts = []
         try:
-            title_elem = entry.find("atom:title", ns)
-            if title_elem is None:
-                title_elem = entry.find("{http://www.w3.org/2005/Atom}title")
-            title = truncate(title_elem.text if title_elem is not None else "", MAX_TITLE_LENGTH)
+            resp = requests.get(
+                self.SEARCH_API,
+                params={"keyword": keyword, "count": 15},
+                headers=self.headers,
+                timeout=DOUYIN_TIMEOUT
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get("data", []) if isinstance(data, dict) else []
+                if isinstance(items, list):
+                    for item in items:
+                        aweme = item.get("aweme_info", {}) or item
+                        desc = aweme.get("desc", "") or aweme.get("title", "")
+                        if not desc or len(desc) < 3:
+                            continue
+                        aid = aweme.get("aweme_id", "") or aweme.get("id", "") or hash(desc)
+                        posts.append({
+                            "platform": "douyin",
+                            "post_id": f"dy_srch_{aid}",
+                            "title": truncate(desc, MAX_TITLE_LENGTH),
+                            "content": desc,
+                            "author": aweme.get("author", {}).get("nickname", ""),
+                            "url": f"https://www.douyin.com/video/{aid}",
+                            "reply_count": aweme.get("statistics", {}).get("comment_count", 0),
+                            "posted_at": datetime.now().isoformat(),
+                        })
+        except Exception:
+            pass
+        return posts
 
-            link_elem = entry.find("atom:link", ns)
-            if link_elem is None:
-                link_elem = entry.find("{http://www.w3.org/2005/Atom}link")
-            url = link_elem.get("href") if link_elem is not None else ""
 
-            content_elem = entry.find("atom:content", ns)
-            if content_elem is None:
-                content_elem = entry.find("{http://www.w3.org/2005/Atom}content")
-            content_raw = content_elem.text if content_elem is not None else ""
-            content = truncate(clean_html(content_raw), MAX_CONTENT_LENGTH)
+# ============================================================
+# WorkBuddy 补充数据注入器（读取AI搜索补充结果）
+# ============================================================
 
-            updated_elem = entry.find("atom:updated", ns)
-            if updated_elem is None:
-                updated_elem = entry.find("{http://www.w3.org/2005/Atom}updated")
-            posted_at = updated_elem.text if updated_elem is not None else None
+class WorkBuddySupplementCollector:
+    """
+    读取 WorkBuddy 自动化任务产生的补充搜索结果 JSON
+    文件: wb_supplement.json（由自动化生成）
+    """
 
-            post_id = url.rstrip("/").split("/")[-1] if url else ""
+    def __init__(self):
+        self.supplement_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "wb_supplement.json"
+        )
 
-            return {
-                "platform": "reddit",
-                "post_id": f"{subreddit}_{post_id}",
-                "title": title,
-                "content": content,
-                "author": f"r/{subreddit}",
-                "url": url,
-                "reply_count": 0,
-                "posted_at": posted_at,
-            }
-        except Exception as e:
-            return None
+    def fetch(self):
+        posts = []
+        if os.path.exists(self.supplement_path):
+            try:
+                with open(self.supplement_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                for item in data:
+                    if isinstance(item, dict) and item.get("title"):
+                        platform = item.get("platform", "supplement")
+                        posts.append({
+                            "platform": platform,
+                            "post_id": f"wb_{platform}_{hash(item['title']) % 10000000}",
+                            "title": truncate(item["title"], MAX_TITLE_LENGTH),
+                            "content": truncate(item.get("content", item["title"]), MAX_CONTENT_LENGTH),
+                            "author": item.get("author", "WorkBuddy"),
+                            "url": item.get("url", ""),
+                            "reply_count": item.get("reply_count", 0),
+                            "posted_at": item.get("posted_at", datetime.now().isoformat()),
+                        })
+                print(f"  [WorkBuddy] 读取 {len(posts)} 条补充数据")
+            except Exception as e:
+                print(f"  [WorkBuddy] 读取失败: {e}")
+        else:
+            print(f"  [WorkBuddy] 无补充数据（可运行自动化生成）")
+        return posts
 
 
 # ============================================================
@@ -230,26 +195,27 @@ class RedditCollector:
 # ============================================================
 
 def collect_all():
-    """采集所有平台"""
+    import sys
     all_posts = []
     results = {}
 
     collectors = [
-        ("v2ex", V2EXCollector),
-        ("reddit", RedditCollector),
+        ("douyin", DouyinCollector),
+        ("workbuddy", WorkBuddySupplementCollector),
     ]
 
     for name, collector_cls in collectors:
         try:
             print(f"\n>>> 开始采集 {name}...")
+            sys.stdout.flush()
             collector = collector_cls()
             posts = collector.fetch()
             results[name] = {"status": "ok", "count": len(posts), "error": None}
             all_posts.extend(posts)
         except Exception as e:
-            print(f"  [{name}] 采集失败: {e}")
+            print(f"  [{name}] 采集失败: {e}", flush=True)
             results[name] = {"status": "error", "count": 0, "error": str(e)}
             continue
 
-    print(f"\n=== 总计采集 {len(all_posts)} 条帖子 ===")
+    print(f"\n=== 总计采集 {len(all_posts)} 条帖子 ===", flush=True)
     return all_posts, results
