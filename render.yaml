@@ -1,0 +1,17 @@
+# Render Blueprint — 自动部署配置
+# 连接 GitHub 仓库后 Render 会自动识别此文件
+
+services:
+  - type: web
+    name: painpoint-dashboard
+    env: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: TZ
+        value: Asia/Shanghai
+    healthCheckPath: /api/health
