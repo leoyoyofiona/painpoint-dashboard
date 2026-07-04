@@ -100,7 +100,7 @@ def _regenerate_dashboard():
 def scheduler_loop():
     """后台调度线程：每天北京时间8:00 (UTC 00:00) 自动采集"""
     while True:
-        now = datetime.utcnow()
+        now = datetime.now(datetime.timezone.utc)
         # 计算下一个 00:00 UTC
         next_run = now.replace(hour=0, minute=0, second=0, microsecond=0)
         if now >= next_run:
@@ -112,7 +112,7 @@ def scheduler_loop():
         time.sleep(sleep_chunk)
 
         # 检查是否到了执行时间
-        now = datetime.utcnow()
+        now = datetime.now(datetime.timezone.utc)
         if now.hour == 0 and now.minute < 5 and not pipeline["running"]:
             print(f"[Scheduler] 开始每日自动采集: {now.isoformat()}")
             thread = threading.Thread(target=run_pipeline, daemon=True)
