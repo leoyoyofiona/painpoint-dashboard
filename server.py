@@ -12,7 +12,7 @@ import os
 import sys
 import time
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 # Render 环境变量 PORT，本地默认 7531
@@ -101,7 +101,7 @@ def _regenerate_dashboard():
 def scheduler_loop():
     """后台调度线程：每天北京时间8:00 (UTC 00:00) 自动采集"""
     while True:
-        now = datetime.now(datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
         # 计算下一个 00:00 UTC
         next_run = now.replace(hour=0, minute=0, second=0, microsecond=0)
         if now >= next_run:
@@ -113,7 +113,7 @@ def scheduler_loop():
         time.sleep(sleep_chunk)
 
         # 检查是否到了执行时间
-        now = datetime.now(datetime.timezone.utc)
+        now = datetime.now(timezone.utc)
         if now.hour == 0 and now.minute < 5 and not pipeline["running"]:
             print(f"[Scheduler] 开始每日自动采集: {now.isoformat()}")
             thread = threading.Thread(target=run_pipeline, daemon=True)
