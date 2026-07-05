@@ -611,6 +611,42 @@ body {
 }
 .empty-icon { font-size: 40px; margin-bottom: 12px; }
 
+/* ===== Reward / Donate Section ===== */
+.reward-section {
+    background: linear-gradient(135deg, #fff9f0, #fff3e6);
+    border: 1px solid #ffe0c2;
+    border-radius: 14px;
+    padding: 28px 24px;
+    margin-top: 36px;
+    text-align: center;
+}
+.reward-title {
+    font-size: 18px; font-weight: 700;
+    color: #d4380d; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.reward-qrs {
+    display: flex; gap: 32px; justify-content: center; flex-wrap: wrap;
+}
+.reward-item { text-align: center; }
+.reward-label {
+    font-size: 13px; font-weight: 600;
+    margin-top: 10px; margin-bottom: 2px;
+}
+.reward-alipay { color: #1677ff; }
+.reward-wechat { color: #07c160; }
+.reward-img {
+    width: 180px; height: 180px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+.reward-img:hover {
+    transform: scale(1.05);
+    cursor: pointer;
+}
+
 /* ===== Footer ===== */
 .footer {
     text-align: center; padding: 24px;
@@ -711,6 +747,21 @@ body {
     <div class="empty" id="emptyMsg" style="display:none;">
         <div class="empty-icon">📭</div>
         暂无痛点数据，请先运行采集和注入流程
+    </div>
+</div>
+
+<!-- Reward / Donate -->
+<div class="reward-section">
+    <div class="reward-title">☕ 觉得有用？请作者喝杯咖啡吧</div>
+    <div class="reward-qrs">
+        <div class="reward-item">
+            <img src="/static/reward_wechat.jpg" alt="微信打赏" class="reward-img">
+            <div class="reward-label reward-wechat">💚 微信支付</div>
+        </div>
+        <div class="reward-item">
+            <img src="/static/reward_alipay.jpg" alt="支付宝打赏" class="reward-img">
+            <div class="reward-label reward-alipay">💙 支付宝</div>
+        </div>
     </div>
 </div>
 

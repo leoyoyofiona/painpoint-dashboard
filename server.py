@@ -190,6 +190,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._serve_json({"status": "ok"})
             elif p == "/api/user-requests":
                 self._handle_get_user_requests()
+            elif p.startswith("/static/"):
+                self._serve_static(p)
             else:
                 self.send_error(404)
         except Exception as e:
@@ -245,6 +247,42 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _serve_static(self, path):
+        """Serve static files from static/ directory"""
+        # Security: prevent directory traversal
+        rel_path = path.lstrip("/static/")
+        if ".." in rel_path or rel_path.startswith("/"):
+            self.send_error(403)
+            return
+
+        file_path = os.path.join(BASE_DIR, "static", rel_path)
+        if not os.path.exists(file_path) or not os.path.isfile(file_path):
+            self.send_error(404)
+            return
+
+        ext = os.path.splitext(file_path)[1].lower()
+        content_types = {
+            ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+            ".png": "image/png", ".gif": "image/gif",
+            ".svg": "image/svg+xml", ".webp": "image/webp",
+            ".ico": "image/x-icon", ".css": "text/css; charset=utf-8",
+            ".js": "application/javascript", ".woff": "font/woff",
+            ".woff2": "font/woff2",
+        }
+        ct = content_types.get(ext, "application/octet-stream")
+
+        try:
+            with open(file_path, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", ct)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
+            self.wfile.write(data)
+        except Exception as e:
+            self.send_error(500, str(e))
 
     def _handle_refresh(self):
         with pipeline_lock:
