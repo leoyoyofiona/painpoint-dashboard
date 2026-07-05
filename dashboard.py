@@ -93,7 +93,7 @@ body {
 .header {
     background: #fff;
     border-bottom: 1px solid var(--border);
-    padding: 20px 0;
+    padding: 16px 0;
     position: sticky;
     top: 0;
     z-index: 100;
@@ -116,16 +116,264 @@ body {
     border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-weight: 800; font-size: 16px;
+    flex-shrink: 0;
 }
 .header h1 { font-size: 20px; font-weight: 700; color: #212529; }
 .header-sub { font-size: 13px; color: var(--text-secondary); }
+
+/* ===== Banner Slogan ===== */
+.banner-slogan {
+    flex: 1;
+    text-align: center;
+    padding: 0 20px;
+}
+.banner-slogan .slogan-main {
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a6f, #f06595);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.3;
+    letter-spacing: 1px;
+}
+.banner-slogan .slogan-sub {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+.banner-slogan .slogan-sub strong {
+    color: #e64980;
+}
+
+/* ===== Submit Button ===== */
+.btn-submit {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    padding: 10px 24px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 14px rgba(238,90,111,0.35);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(238,90,111,0.45);
+}
+.btn-submit:active { transform: translateY(0); }
+.btn-submit .pulse-dot {
+    width: 8px; height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+}
+
 .stats-inline {
     display: flex; gap: 16px; flex-wrap: wrap;
+    align-items: center;
 }
 .stat-mini {
     font-size: 13px; color: var(--text-secondary);
 }
 .stat-mini strong { color: var(--accent); font-size: 16px; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 560px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    animation: modalIn 0.3s ease;
+}
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+    color: #fff;
+    padding: 24px 28px;
+    border-radius: 16px 16px 0 0;
+}
+.modal-header h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.modal-header p { font-size: 14px; opacity: 0.9; line-height: 1.5; }
+.modal-body { padding: 28px; }
+.modal-close {
+    float: right;
+    font-size: 24px;
+    cursor: pointer;
+    opacity: 0.8;
+    line-height: 1;
+    background: none;
+    border: none;
+    color: #fff;
+}
+.modal-close:hover { opacity: 1; }
+
+.form-group { margin-bottom: 20px; }
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+.form-label .required { color: #e64980; }
+.form-label .optional { color: var(--text-muted); font-weight: 400; font-size: 12px; }
+.form-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    line-height: 1.5;
+}
+.form-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px 16px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.6;
+}
+.form-textarea:focus { border-color: #ff6b6b; }
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.form-input:focus { border-color: #ff6b6b; }
+.form-tag-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 8px;
+}
+.form-tag {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 14px;
+    background: var(--bg);
+    color: var(--text-secondary);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+}
+.form-tag:hover { border-color: #ff6b6b; color: #ff6b6b; }
+
+.btn-submit-form {
+    width: 100%;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+}
+.btn-submit-form:hover { opacity: 0.9; }
+.btn-submit-form:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.modal-success {
+    text-align: center;
+    padding: 40px 28px;
+}
+.modal-success .success-icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+}
+.modal-success h3 { font-size: 20px; margin-bottom: 8px; }
+.modal-success p { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
+
+/* ===== User Requests Section ===== */
+.user-requests-section {
+    background: linear-gradient(135deg, #fff5f5, #fff0f3);
+    border: 1px solid #ffe0e6;
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    margin-bottom: 24px;
+}
+.ur-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.ur-header h2 { font-size: 16px; font-weight: 700; }
+.ur-count {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 14px;
+}
+.ur-list {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+}
+.ur-list::-webkit-scrollbar { height: 4px; }
+.ur-list::-webkit-scrollbar-thumb { background: #ffc9cc; border-radius: 2px; }
+.ur-item {
+    background: #fff;
+    border: 1px solid #ffe0e6;
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-width: 260px;
+    max-width: 300px;
+    flex-shrink: 0;
+}
+.ur-item-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.ur-item-time {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+}
 
 /* ===== Container ===== */
 .container {
@@ -377,6 +625,15 @@ body {
     .header-inner { padding: 0 16px; }
     .search-box { width: 140px; }
     .cat-section { margin-bottom: 20px; }
+    .banner-slogan { width: 100%; order: 3; padding: 0; }
+    .banner-slogan .slogan-main { font-size: 16px; }
+    .banner-slogan .slogan-sub { font-size: 12px; }
+    .stats-inline { width: 100%; justify-content: space-between; }
+    .btn-submit { padding: 8px 18px; font-size: 14px; }
+    .modal-box { border-radius: 12px; }
+    .modal-header { padding: 20px; }
+    .modal-body { padding: 20px; }
+    .ur-item { min-width: 220px; }
 }
 </style>
 </head>
@@ -391,15 +648,61 @@ body {
                 <div class="header-sub" id="lastUpdated"></div>
             </div>
         </div>
+        <div class="banner-slogan">
+            <div class="slogan-main">你的诉求，我来实现！</div>
+            <div class="slogan-sub">说出你生活工作中的困扰，用代码帮你解决 · <strong>参与即享首批内测资格</strong></div>
+        </div>
         <div class="stats-inline">
             <div class="stat-mini">痛点 <strong id="statPP">0</strong></div>
             <div class="stat-mini">帖子 <strong id="statPosts">0</strong></div>
-            <div class="stat-mini">今日采集 <strong id="statToday">0</strong></div>
+            <button class="btn-submit" onclick="openModal()">
+                <span class="pulse-dot"></span> 我要诉求
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Submit Modal -->
+<div class="modal-overlay" id="submitModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+            <h2>📝 提交你的诉求</h2>
+            <p>遇到了什么困扰？希望有什么工具能帮你解决？每一条诉求我们都会认真对待，优秀的想法将直接变成开发项目！</p>
+        </div>
+        <div class="modal-body" id="modalBody">
+            <div class="form-group">
+                <label class="form-label">描述你的诉求 <span class="required">*</span></label>
+                <textarea class="form-textarea" id="reqDesc" placeholder="比如：每次整理发票都要手动分类，太费时间了，希望有个工具能自动识别分类..." maxlength="1000"></textarea>
+                <div class="form-hint">越具体越好！说说你遇到了什么问题，你期望什么样的解决方案。</div>
+                <div class="form-tag-row">
+                    <span class="form-tag" onclick="quickFill('工作办公')">💼 工作办公</span>
+                    <span class="form-tag" onclick="quickFill('学习考试')">📚 学习考试</span>
+                    <span class="form-tag" onclick="quickFill('日常生活')">🏠 日常生活</span>
+                    <span class="form-tag" onclick="quickFill('购物消费')">🛒 购物消费</span>
+                    <span class="form-tag" onclick="quickFill('其他')">📌 其他</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">邮箱 <span class="optional">（选填，用于内测通知）</span></label>
+                <input type="email" class="form-input" id="reqEmail" placeholder="your@email.com">
+                <div class="form-hint">留下邮箱，项目上线后你将作为<strong>首批内测用户</strong>第一时间收到通知。我们承诺不会用于其他用途。</div>
+            </div>
+            <button class="btn-submit-form" id="submitBtn" onclick="submitRequest()">提交诉求</button>
         </div>
     </div>
 </div>
 
 <div class="container">
+    <!-- User Submitted Requests -->
+    <div class="user-requests-section" id="userRequestsSection" style="display:none;">
+        <div class="ur-header">
+            <h2>🗣️ 大家都在说</h2>
+            <span class="ur-count" id="urCount">0 人参与</span>
+        </div>
+        <div class="ur-list" id="urList"></div>
+    </div>
+
     <!-- Filters -->
     <div class="filter-bar" id="catFilters"></div>
 
@@ -412,7 +715,7 @@ body {
 </div>
 
 <div class="footer">
-    大众痛点收集器 · 聚焦日常工作、学习、生活中的真实需求 · 数据来源：抖音/V2EX/微博/百度/HN/Reddit/SO/PH
+    大众痛点收集器 · 聚焦日常工作、学习、生活中的真实需求 · 你的每一个诉求都可能成为下一个项目 💡
 </div>
 
 <script>
@@ -428,7 +731,6 @@ let searchQuery = '';
 document.getElementById('lastUpdated').textContent = '更新：' + (DATA.last_updated || '');
 document.getElementById('statPP').textContent = DATA.stats.total_pain_points || 0;
 document.getElementById('statPosts').textContent = DATA.stats.total_posts || 0;
-document.getElementById('statToday').textContent = DATA.stats.posts_today || 0;
 
 // ===== Category definition & order =====
 const catOrder = ['work','study','life','health','office','shopping','travel','finance','internet','phone','computer','other'];
@@ -644,6 +946,151 @@ function toggleCard(card) {
 // ===== Init =====
 renderFilters();
 renderCards();
+
+// ===== User Request Modal =====
+function openModal() {
+    document.getElementById('submitModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('submitModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function closeModalOnOverlay(event) {
+    if (event.target === document.getElementById('submitModal')) {
+        closeModal();
+    }
+}
+
+function quickFill(category) {
+    const ta = document.getElementById('reqDesc');
+    const prefixes = {
+        '工作办公': '【工作办公】',
+        '学习考试': '【学习考试】',
+        '日常生活': '【日常生活】',
+        '购物消费': '【购物消费】',
+        '其他': '【其他】'
+    };
+    const prefix = prefixes[category] || '';
+    if (!ta.value.startsWith(prefix)) {
+        ta.value = prefix + ta.value.replace(/^【.*?】/, '');
+    }
+    ta.focus();
+}
+
+function submitRequest() {
+    const desc = document.getElementById('reqDesc').value.trim();
+    const email = document.getElementById('reqEmail').value.trim();
+    const btn = document.getElementById('submitBtn');
+
+    if (!desc || desc.length < 5) {
+        alert('请至少输入5个字描述你的诉求');
+        return;
+    }
+    if (desc.length > 1000) {
+        alert('描述不能超过1000字');
+        return;
+    }
+    if (email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+        alert('邮箱格式不正确');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = '提交中...';
+
+    fetch('/api/submit-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: desc, email: email })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            btn.disabled = false;
+            btn.textContent = '提交诉求';
+            return;
+        }
+        // Show success
+        document.getElementById('modalBody').innerHTML = `
+            <div class="modal-success">
+                <div class="success-icon">🎉</div>
+                <h3>诉求已提交！</h3>
+                <p>感谢你的参与！你的想法对我们非常重要。<br>项目上线后，你将作为首批内测用户收到通知。</p>
+                <button class="btn-submit-form" style="margin-top:20px;" onclick="closeModal();resetModal();">完成</button>
+            </div>
+        `;
+        loadUserRequests();
+    })
+    .catch(err => {
+        alert('网络错误，请稍后重试');
+        btn.disabled = false;
+        btn.textContent = '提交诉求';
+    });
+}
+
+function resetModal() {
+    document.getElementById('modalBody').innerHTML = `
+        <div class="form-group">
+            <label class="form-label">描述你的诉求 <span class="required">*</span></label>
+            <textarea class="form-textarea" id="reqDesc" placeholder="比如：每次整理发票都要手动分类，太费时间了，希望有个工具能自动识别分类..." maxlength="1000"></textarea>
+            <div class="form-hint">越具体越好！说说你遇到了什么问题，你期望什么样的解决方案。</div>
+            <div class="form-tag-row">
+                <span class="form-tag" onclick="quickFill('工作办公')">💼 工作办公</span>
+                <span class="form-tag" onclick="quickFill('学习考试')">📚 学习考试</span>
+                <span class="form-tag" onclick="quickFill('日常生活')">🏠 日常生活</span>
+                <span class="form-tag" onclick="quickFill('购物消费')">🛒 购物消费</span>
+                <span class="form-tag" onclick="quickFill('其他')">📌 其他</span>
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">邮箱 <span class="optional">（选填，用于内测通知）</span></label>
+            <input type="email" class="form-input" id="reqEmail" placeholder="your@email.com">
+            <div class="form-hint">留下邮箱，项目上线后你将作为<strong>首批内测用户</strong>第一时间收到通知。我们承诺不会用于其他用途。</div>
+        </div>
+        <button class="btn-submit-form" id="submitBtn" onclick="submitRequest()">提交诉求</button>
+    `;
+}
+
+// ===== Load User Requests =====
+function loadUserRequests() {
+    fetch('/api/user-requests')
+    .then(r => r.json())
+    .then(data => {
+        if (!data.total || data.total === 0) return;
+        document.getElementById('userRequestsSection').style.display = 'block';
+        document.getElementById('urCount').textContent = data.total + ' 人参与';
+
+        const list = document.getElementById('urList');
+        list.innerHTML = data.requests.map(r => {
+            const time = formatTime(r.created_at);
+            return '<div class="ur-item">' +
+                '<div class="ur-item-text">' + escapeHtml(r.description) + '</div>' +
+                '<div class="ur-item-time">' + time + '</div>' +
+                '</div>';
+        }).join('');
+    })
+    .catch(() => {});
+}
+
+function formatTime(isoStr) {
+    try {
+        const d = new Date(isoStr);
+        const now = new Date();
+        const diff = (now - d) / 1000;
+        if (diff < 60) return '刚刚';
+        if (diff < 3600) return Math.floor(diff / 60) + '分钟前';
+        if (diff < 86400) return Math.floor(diff / 3600) + '小时前';
+        if (diff < 604800) return Math.floor(diff / 86400) + '天前';
+        return d.toLocaleDateString('zh-CN');
+    } catch(e) { return ''; }
+}
+
+// Load on page init
+loadUserRequests();
 </script>
 </body>
 </html>"""
