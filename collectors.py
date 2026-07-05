@@ -34,22 +34,88 @@ def clean_html(raw_html):
     return re.sub(r'\s+', ' ', text).strip()
 
 
-# 英文痛点短语 → 中文翻译映射
+# 英文痛点短语 → 中文翻译映射（扩展版）
 EN_TO_CN = {
+    # 痛点/负面表达
     "frustrating": "令人沮丧", "annoying": "烦人", "slow": "太慢",
-    "crash": "崩溃", "broken": "坏了", "hate": "讨厌",
-    "difficult": "困难", "struggle": "挣扎", "tedious": "繁琐",
+    "crash": "崩溃", "crashes": "崩溃", "crashed": "崩溃",
+    "broken": "坏了", "hate": "讨厌", "difficult": "困难",
+    "struggle": "挣扎", "struggling": "挣扎", "tedious": "繁琐",
     "cumbersome": "笨重", "useless": "没用", "confusing": "混乱",
     "missing": "缺失", "lack": "缺乏", "unable to": "无法",
-    "how to": "如何", "how do": "怎么做", "anyone know": "有人知道吗",
-    "recommend": "推荐", "looking for": "寻找", "alternative": "替代方案",
-    "wish": "希望", "need": "需要", "want": "想要", "should": "应该",
-    "request": "请求", "suggest": "建议", "why is": "为什么",
-    "why does": "为什么", "why can't": "为什么不能",
-    "is there": "有没有", "is there a way": "有没有办法",
-    "help with": "求助", "stuck on": "卡在", "can't figure out": "搞不懂",
+    "frustrated": "沮丧", "irritating": "恼人", "horrible": "糟糕",
+    "terrible": "很差", "awful": "极差", "painful": "痛苦",
+    "complicated": "复杂", "complex": "复杂", "messy": "混乱",
+    "clunky": "笨拙", "laggy": "卡顿", "buggy": "有bug",
+    "outdated": "过时", "obsolete": "废弃", "deprecated": "已弃用",
+    "insecure": "不安全", "vulnerable": "有漏洞",
+    "expensive": "太贵", "overpriced": "定价过高", "pricey": "昂贵",
     "waste of time": "浪费时间", "time consuming": "耗时",
+    "time-consuming": "耗时", "not working": "不能用",
+    "doesn't work": "不工作", "doesn't support": "不支持",
+    "no way to": "没办法", "hard to": "很难",
+    "too many": "太多", "too much": "太多",
+
+    # 需求/求助表达
+    "how to": "如何", "how do": "怎么做", "how can": "怎样才能",
+    "anyone know": "有人知道吗", "is there": "有没有",
+    "is there a way": "有没有办法", "is there a tool": "有没有工具",
+    "recommend": "推荐", "looking for": "寻找",
+    "alternative to": "替代方案", "replacement for": "替代品",
+    "wish": "希望", "need": "需要", "want": "想要",
+    "should": "应该", "would be nice": "如果能就好了",
+    "request": "请求", "suggest": "建议", "feature request": "功能请求",
+    "why is": "为什么", "why does": "为什么", "why can't": "为什么不能",
+    "why doesn't": "为什么不", "why no": "为什么没有",
+    "help with": "求助", "stuck on": "卡在", "can't figure out": "搞不懂",
+    "can't find": "找不到", "can't get": "搞不定",
     "workaround": "临时方案", "hack": "折腾",
+    "any tool": "有什么工具", "any app": "有什么应用",
+    "best way to": "最好的方法",
+    "what's the best": "哪个最好", "which is better": "哪个更好",
+    "compare": "对比", "vs": "对比", "versus": "对比",
+    "free": "免费", "open source": "开源",
+    "simple": "简单", "easy": "容易", "quick": "快速",
+    "batch": "批量", "bulk": "批量", "automate": "自动化",
+    "automated": "自动化的", "automatic": "自动",
+
+    # 常见技术/工具词
+    "tool": "工具", "app": "应用", "application": "应用",
+    "software": "软件", "website": "网站", "extension": "扩展",
+    "plugin": "插件", "browser": "浏览器", "script": "脚本",
+    "template": "模板", "workflow": "工作流", "automation": "自动化",
+    "shortcut": "快捷方式", "command": "命令",
+    "rename": "重命名", "organize": "整理", "sync": "同步",
+    "backup": "备份", "convert": "转换", "merge": "合并",
+    "split": "拆分", "extract": "提取", "compress": "压缩",
+    "download": "下载", "upload": "上传", "export": "导出", "import": "导入",
+    "search": "搜索", "filter": "筛选", "sort": "排序",
+    "track": "追踪", "monitor": "监控", "notify": "通知", "remind": "提醒",
+    "schedule": "日程", "calendar": "日历", "todo": "待办",
+    "checklist": "清单", "note": "笔记", "reminder": "提醒",
+    "image": "图片", "photo": "照片", "video": "视频",
+    "screenshot": "截图", "recording": "录制",
+    "budget": "预算", "expense": "支出", "invoice": "发票",
+    "password": "密码", "login": "登录", "account": "账户",
+    "file": "文件", "folder": "文件夹", "directory": "目录",
+    "document": "文档", "spreadsheet": "表格", "presentation": "演示文稿",
+    "email": "邮件", "message": "消息", "notification": "通知",
+    "dashboard": "仪表盘", "report": "报表", "chart": "图表",
+    "database": "数据库", "cache": "缓存", "queue": "队列",
+    "keyboard": "键盘", "mouse": "鼠标", "screen": "屏幕",
+    "printer": "打印机", "scanner": "扫描仪",
+    "update": "更新", "upgrade": "升级", "install": "安装",
+    "uninstall": "卸载", "configure": "配置", "setting": "设置",
+
+    # 常见问题模式
+    "not enough": "不够", "too slow": "太慢",
+    "keeps crashing": "一直崩溃", "keeps freezing": "一直卡死",
+    "not supported": "不支持", "not available": "不可用",
+    "out of memory": "内存不足", "out of space": "空间不足",
+    "permission denied": "权限不足", "access denied": "拒绝访问",
+    "connection failed": "连接失败", "network error": "网络错误",
+    "file not found": "文件未找到", "page not found": "页面未找到",
+    "loading": "加载中", "timeout": "超时",
 }
 
 # 英文 → 中文分类关键词映射
@@ -68,12 +134,47 @@ EN_CATEGORY_MAP = {
 
 
 def translate_en(text):
-    """简单英译中：替换已知痛点短语"""
+    """英译中：先处理常见句式，再替换已知痛点短语（大小写不敏感）"""
     if not text:
         return text
     result = text
+
+    # 1. 先处理常见英文句式模式（整句翻译）
+    patterns = [
+        (r'^Ask HN:\s*', "【HN问答】"),
+        (r'^Tell HN:\s*', "【HN讨论】"),
+        (r'^How to\s+', "如何"),
+        (r'^How do (I|you|we)\s+', "如何"),
+        (r'^How can (I|you|we)\s+', "怎样才能"),
+        (r'^What is\s+', "什么是"),
+        (r'^What are\s+', "什么是"),
+        (r'^What\'s\s+', "什么是"),
+        (r'^Why (is|does|do|are|can\'t|don\'t|doesn\'t)\s+', "为什么"),
+        (r'^Why no\s+', "为什么没有"),
+        (r'^Is there (a|an|any)\s+', "有没有"),
+        (r'^Is there a way to\s+', "有没有办法"),
+        (r'^Is there a tool\s+', "有没有工具"),
+        (r'^Anyone know\s+', "有人知道吗"),
+        (r'^Best way to\s+', "最好的方法："),
+        (r'^What\'s the best\s+', "哪个最好："),
+        (r'^Which is better\s+', "哪个更好："),
+        (r'^Looking for\s+', "寻找："),
+        (r'^Alternative to\s+', "替代方案："),
+        (r'^Recommend(ation)?\s+', "推荐："),
+        (r'^Help with\s+', "求助："),
+        (r'^Stuck on\s+', "卡在："),
+        (r"^Can't figure out\s+", "搞不懂："),
+        (r"^Can't find\s+", "找不到："),
+        (r"^Can't get\s+", "搞不定："),
+    ]
+    for pattern, replacement in patterns:
+        result = re.sub(pattern, replacement, result, flags=re.IGNORECASE)
+
+    # 2. 再替换已知痛点短语（大小写不敏感）
     for en, cn in sorted(EN_TO_CN.items(), key=lambda x: -len(x[0])):
-        result = result.replace(en, cn)
+        pattern = re.compile(re.escape(en), re.IGNORECASE)
+        result = pattern.sub(cn, result)
+
     return result
 
 
@@ -278,14 +379,17 @@ class HackerNewsCollector:
         author = hit.get("author", "")
         created = hit.get("created_at", datetime.now().isoformat())
 
-        # 翻译标题
+        # 翻译标题用于显示
         cn_title = translate_en(title)
+        # content 保留英文原文（供展开查看）
+        orig_body = hit.get("story_text", "") or hit.get("comment_text", "") or ""
+        orig_body = clean_html(orig_body) if orig_body else ""
 
         return {
             "platform": "hackernews",
             "post_id": f"hn_{object_id}",
-            "title": truncate(cn_title if cn_title != title else title, MAX_TITLE_LENGTH),
-            "content": truncate(f"{title}\n{translate_en(hit.get('story_text', '') or hit.get('comment_text', '') or '')}", MAX_CONTENT_LENGTH),
+            "title": truncate(cn_title, MAX_TITLE_LENGTH),
+            "content": truncate(f"{title}\n{orig_body}", MAX_CONTENT_LENGTH),
             "author": author,
             "url": url,
             "reply_count": num_comments,
@@ -301,15 +405,21 @@ class RedditCollector:
     """Reddit — 多个子版块热门帖子，JSON API"""
 
     SUBREDDITS = [
-        "AskReddit",       # 问答社区，大量需求/痛点
-        "lifehacks",       # 生活技巧，天然痛点
-        "YouShouldKnow",   # 你应该知道，需求类
-        "productivity",    # 生产力工具
-        "apps",            # APP推荐
-        "software",        # 软件推荐
-        "techsupport",     # 技术支持，天然痛点
-        "mildlyinfuriating", # 轻微恼火，天然痛点
+        "AskReddit",          # 问答社区，大量需求/痛点
+        "lifehacks",          # 生活技巧，天然痛点
+        "YouShouldKnow",      # 你应该知道，需求类
+        "productivity",       # 生产力工具
+        "apps",               # APP推荐
+        "software",           # 软件推荐
+        "techsupport",        # 技术支持，天然痛点
+        "mildlyinfuriating",  # 轻微恼火，天然痛点
         "firstworldproblems", # 第一世界问题，天然痛点
+        "datascience",        # 数据处理痛点
+        "excel",              # Excel 使用痛点
+        "windows",            # Windows 使用问题
+        "mac",                # Mac 使用问题
+        "android",            # 安卓使用问题
+        "iphone",             # iPhone使用问题
     ]
 
     def __init__(self):
@@ -359,19 +469,17 @@ class RedditCollector:
         permalink = data.get("permalink", "")
         created_utc = data.get("created_utc", 0)
 
-        # 翻译标题
+        # 翻译标题用于显示
         cn_title = translate_en(title)
-        cn_text = translate_en(selftext[:500]) if selftext else ""
-
-        # 构建内容
+        # content 保留英文原文（供展开查看）
         content = f"[r/{subreddit}] {title}"
         if selftext:
-            content += f"\n{cn_text}"
+            content += f"\n{selftext[:500]}"
 
         return {
             "platform": "reddit",
             "post_id": f"rd_{post_id}",
-            "title": truncate(cn_title if cn_title != title else title, MAX_TITLE_LENGTH),
+            "title": truncate(cn_title, MAX_TITLE_LENGTH),
             "content": truncate(content, MAX_CONTENT_LENGTH),
             "author": author,
             "url": f"https://www.reddit.com{permalink}" if permalink else f"https://www.reddit.com/r/{subreddit}",
@@ -610,19 +718,22 @@ class StackOverflowCollector:
                     body = clean_html(item.get("body", ""))
                     tags = item.get("tags", [])
 
-                    # 翻译标题
+                    # 翻译标题用于显示
                     cn_title = translate_en(title)
+                    # content 保留英文原文（供展开查看）
+                    body = clean_html(item.get("body", ""))
+                    tags = item.get("tags", [])
 
                     content = f"[SO] {title}"
                     if tags:
                         content += f"\nTags: {', '.join(tags)}"
                     if body:
-                        content += f"\n{translate_en(body[:300])}"
+                        content += f"\n{body[:300]}"
 
                     posts.append({
                         "platform": "stackoverflow",
                         "post_id": f"so_{q_id}",
-                        "title": truncate(cn_title if cn_title != title else title, MAX_TITLE_LENGTH),
+                        "title": truncate(cn_title, MAX_TITLE_LENGTH),
                         "content": truncate(content, MAX_CONTENT_LENGTH),
                         "author": item.get("owner", {}).get("display_name", ""),
                         "url": item.get("link", f"https://stackoverflow.com/questions/{q_id}"),
@@ -676,11 +787,12 @@ class ProductHuntCollector:
                         desc = clean_html(desc)
 
                     cn_title = translate_en(title)
+                    # content 保留英文原文
 
                     posts.append({
                         "platform": "producthunt",
                         "post_id": f"ph_{hash(title) % 10000000}",
-                        "title": truncate(cn_title if cn_title != title else title, MAX_TITLE_LENGTH),
+                        "title": truncate(cn_title, MAX_TITLE_LENGTH),
                         "content": truncate(desc or title, MAX_CONTENT_LENGTH),
                         "author": "Product Hunt",
                         "url": link,

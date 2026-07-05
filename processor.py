@@ -43,25 +43,44 @@ def _ensure_jieba():
 
 CATEGORY_KEYWORDS = {
     "work": ["工作", "办公", "职场", "会议", "汇报", "效率", "管理", "流程",
-             "work", "office", "business", "meeting", "manage"],
+             "work", "office", "business", "meeting", "manage",
+             "求职", "招聘", "简历", "面试", "辞职", "跳槽"],
     "study": ["学习", "考试", "背单词", "做题", "题库", "刷题", "错题",
               "考研", "考公", "课程", "笔记", "复习",
               "study", "learn", "course", "school", "exam"],
     "life": ["生活", "日常", "家务", "做饭", "菜谱", "记账", "预算",
              "购物", "快递", "旅游", "出行", "租房", "买房", "装修",
              "搬家", "相亲", "情感", "健身", "减肥", "睡眠", "饮食",
-             "体检", "看病", "养生", "护肤", "育儿", "孩子",
-              "life", "daily", "home", "family", "health", "food", "travel"],
-    "computer": ["电脑", "文档", "表格", "PPT", "PDF", "Word", "Excel",
-                 "格式转换", "批量处理", "文件", "文件夹", "重命名",
-                 "压缩", "解压", "备份", "截图", "录屏",
+              "life", "daily", "home", "family", "food", "travel",
+              "起居", "宠物", "养花", "收纳", "打扫"],
+    "health": ["体检", "看病", "养生", "护肤", "育儿", "孩子",
+               "健康", "医疗", "医院", "挂号", "科室", "症状",
+               "诊断", "药品", "药", "手术", "康复",
+               "health", "medical", "hospital", "doctor", "disease",
+               "健身", "减肥", "运动", "饮食"],
+    "office": ["文档", "表格", "PPT", "PDF", "Word", "Excel",
+               "格式转换", "批量处理", "文件", "翻译", "OCR",
+               "排版", "打印", "合同", "说明书",
+               "convert", "merge", "translate", "document"],
+    "shopping": ["购物", "比价", "便宜", "推荐", "性价比",
+                 "买", "卖", "价格", "打折", "优惠",
+                 "手机推荐", "选购", "哪个好", "值得买",
+                 "shopping", "price", "buy", "cheap", "review"],
+    "travel": ["旅游", "出行", "打车", "公交", "地铁", "火车",
+               "机票", "酒店", "民宿", "攻略", "景点",
+               "travel", "trip", "hotel", "flight"],
+    "finance": ["记账", "理财", "预算", "账单", "省钱",
+                "存款", "贷款", "房贷", "车贷", "工资",
+                "budget", "finance", "money", "expense", "bill"],
+    "computer": ["电脑", "重命名", "压缩", "解压", "备份", "截图", "录屏",
                  "code", "programming", "software", "debug", "开发",
-                 "programming", "compiler"],
+                 "programming", "compiler", "文件夹", "云盘"],
     "phone": ["手机", "APP", "小程序", "安卓", "iOS", "iPhone",
               "app", "mobile", "android", "iphone"],
-    "internet": ["网页", "浏览器", "下载", "搜索", "网盘", "云盘",
-                 "插件", "扩展", "脚本", "翻译", "OCR",
-                 "website", "browser", "online", "internet", "web"],
+    "internet": ["网页", "浏览器", "下载", "搜索", "网盘",
+                 "插件", "扩展", "脚本",
+                 "website", "browser", "online", "internet", "web",
+                 "DNS", "IP", "网络诊断", "测速"],
     "other": [],
 }
 
@@ -88,6 +107,75 @@ def _extract_keywords(text, topk=8):
     _ensure_jieba()
     tags = jieba.analyse.extract_tags(text, topK=topk, withWeight=False)
     return tags
+
+
+# ============================================================
+# 可编程解决性检测 — 判断痛点是否可通过软件/编程项目解决
+# ============================================================
+
+CODE_SOLVABLE_SIGNALS = {
+    # 中文 — 软件可解决的场景词
+    "工具", "软件", "APP", "app", "小程序", "网页", "网站", "插件", "扩展",
+    "脚本", "程序", "应用", "系统", "平台", "自动化", "批量", "模板",
+    # 文件/数据操作
+    "文件", "文件夹", "重命名", "压缩", "解压", "备份", "转换", "合并",
+    "拆分", "整理", "归类", "去重", "筛选", "排序", "导出", "导入",
+    # 信息处理
+    "搜索", "查找", "查询", "对比", "比较", "汇总", "统计", "分析",
+    "监控", "追踪", "记录", "提醒", "通知", "推送",
+    # 内容处理
+    "翻译", "识别", "OCR", "提取", "生成", "制作", "编辑", "排版",
+    "截图", "录屏", "剪辑", "水印", "格式",
+    # 日常工具场景
+    "记事", "笔记", "备忘", "日历", "日程", "计划", "待办", "清单",
+    "闹钟", "计时", "打卡", "记账", "预算", "账单", "报表",
+    "比价", "抢票", "预约", "排队", "导航", "地图",
+    "菜谱", "健身", "减肥", "背单词", "刷题", "复习",
+    # 英文信号
+    "tool", "app", "software", "website", "automation", "batch",
+    "script", "program", "convert", "rename", "organize", "backup",
+    "search", "filter", "track", "monitor", "notify", "remind",
+    "schedule", "calendar", "todo", "note", "template", "generate",
+    "merge", "split", "extract", "compare", "sync", "download",
+    "convert", "translate", "recognize", "automate", "workflow",
+}
+
+# 明确不是编程能解决的（纯物理/情感/社会问题）
+NOT_CODE_SOLVABLE = {
+    "感情", "分手", "出轨", "婆媳", "离婚", "复合", "暗恋",
+    "抑郁症", "焦虑症", "心理咨询",
+    "彩票", "赌博", "算命", "风水",
+    "追星", "饭圈", "塌房", "绯闻",
+}
+
+
+def _is_code_solvable(text, signal_words):
+    """
+    判断痛点是否可通过编程/软件项目解决
+    返回 True 如果痛点涉及工具、自动化、信息处理等可编程场景
+    """
+    text_lower = text.lower()
+
+    # 排除明确的非编程可解决问题
+    for kw in NOT_CODE_SOLVABLE:
+        if kw in text_lower:
+            return False
+
+    # 检测可编程解决信号
+    for kw in CODE_SOLVABLE_SIGNALS:
+        if kw in text_lower:
+            return True
+
+    # 信号词中包含需求类（求推荐、怎么办、如何等），通常可通过工具解决
+    need_indicators = {"求推荐", "怎么办", "有没有", "如何", "怎么", "有没有人",
+                       "有什么", "求", "推荐", "哪款好", "哪个好", "怎么选",
+                       "need", "want", "how to", "recommend", "looking for",
+                       "alternative", "is there"}
+    for sw in signal_words:
+        if sw in need_indicators:
+            return True
+
+    return False
 
 
 def _detect_pain_signal(text):
@@ -179,6 +267,7 @@ def extract_pain_points_auto(conn, verbose=False):
     all_extracted = []
     processed_count = 0
     skipped_count = 0
+    not_solvable_count = 0
 
     for post in unprocessed:
         post_id = post["id"]
@@ -202,12 +291,25 @@ def extract_pain_points_auto(conn, verbose=False):
                 # 对热搜类内容，提取关键词作为潜在需求
                 keywords = _extract_keywords(full_text, topk=5)
                 if keywords:
+                    # 检查是否可编程解决
+                    if not _is_code_solvable(full_text, signal_words=[]):
+                        mark_post_processed(conn, post_id)
+                        not_solvable_count += 1
+                        continue
+
                     pain_desc = _generate_description(title, content, platform, signal_type=None)
                     category = _categorize(full_text)
                     feas = _estimate_feasibility(full_text, signal_words=[], platform=platform)
+
+                    english_platforms = ("hackernews", "reddit", "stackoverflow", "producthunt")
+                    orig_text = None
+                    if platform.lower() in english_platforms:
+                        orig_text = content[:500] if content else title
+
                     all_extracted.append({
                         "post_id": post_id,
                         "description": pain_desc,
+                        "original_text": orig_text,
                         "category": category,
                         "feasibility": feas,
                         "feasibility_reason": "热搜话题提取",
@@ -220,7 +322,13 @@ def extract_pain_points_auto(conn, verbose=False):
             skipped_count += 1
             continue
 
-        # 有信号 — 提取痛点
+        # 有信号 — 检查是否可编程解决
+        if not _is_code_solvable(full_text, signal_words):
+            mark_post_processed(conn, post_id)
+            not_solvable_count += 1
+            continue
+
+        # 提取痛点
         keywords = _extract_keywords(full_text, topk=8)
         # 合并信号词到关键词中
         all_kw = list(set(keywords + signal_words[:4]))
@@ -229,9 +337,16 @@ def extract_pain_points_auto(conn, verbose=False):
         category = _categorize(full_text)
         feas = _estimate_feasibility(full_text, signal_words, platform)
 
+        # 英文平台：保留原文（content 现在是英文原文）
+        english_platforms = ("hackernews", "reddit", "stackoverflow", "producthunt")
+        orig_text = None
+        if platform.lower() in english_platforms:
+            orig_text = content[:500] if content else title
+
         all_extracted.append({
             "post_id": post_id,
             "description": pain_desc,
+            "original_text": orig_text,
             "category": category,
             "feasibility": feas,
             "feasibility_reason": f"信号类型: {signal_type}, 信号词: {','.join(signal_words[:3])}",
@@ -242,7 +357,8 @@ def extract_pain_points_auto(conn, verbose=False):
 
     if verbose:
         print(f"  信号检测: {processed_count} 帖有痛点/需求信号")
-        print(f"  跳过: {skipped_count} 帖无信号")
+        print(f"  跳过(无信号): {skipped_count} 帖")
+        print(f"  过滤(非编程可解): {not_solvable_count} 帖")
 
     # 批量聚类入库
     if all_extracted:
@@ -256,46 +372,25 @@ def extract_pain_points_auto(conn, verbose=False):
 
 def _generate_description(title, content, platform, signal_type):
     """
-    根据帖子内容生成痛点描述
+    根据帖子内容生成干净的痛点描述（无平台前缀，无信号标签）
     """
     title = (title or "").strip()
     content = (content or "").strip()
 
-    # 平台标签
-    platform_labels = {
-        "douyin": "[抖音]",
-        "weibo": "[微博]",
-        "baidu": "[百度]",
-        "v2ex": "[V2EX]",
-        "hackernews": "[HN]",
-        "reddit": "[Reddit]",
-        "stackoverflow": "[StackOverflow]",
-        "producthunt": "[ProductHunt]",
-    }
-    prefix = platform_labels.get(platform, "")
+    # 优先用标题作为描述
+    desc = title
 
-    # 如果有信号类型，添加标注
-    signal_label = ""
-    if signal_type == "pain":
-        signal_label = "【痛点】"
-    elif signal_type == "need":
-        signal_label = "【需求】"
-    elif signal_type == "both":
-        signal_label = "【痛点+需求】"
+    # 如果标题太短，补充内容
+    if len(desc) < 10 and content:
+        desc = content[:120].replace("\n", " ").strip()
 
-    # 生成描述
-    if title and content and title != content:
-        desc = f"{prefix}{signal_label}{title}"
-        # 如果内容中有更多上下文，截取关键部分
-        if len(content) > 20 and content != title:
-            # 提取内容前100字作为补充
-            content_brief = content[:100].replace("\n", " ").strip()
-            if content_brief and content_brief != title:
-                desc = f"{prefix}{signal_label}{title} — {content_brief}"
-    else:
-        desc = f"{prefix}{signal_label}{title}"
+    # 如果标题和内容都有，且不同，拼接关键信息
+    if title and content and len(title) < 40 and content[:50].strip() != title:
+        content_brief = content[:80].replace("\n", " ").strip()
+        if content_brief and content_brief not in desc:
+            desc = f"{title} — {content_brief}"
 
-    return desc[:200] if len(desc) > 200 else desc
+    return desc[:150] if len(desc) > 150 else desc
 
 
 def _estimate_feasibility(text, signal_words, platform):
@@ -384,7 +479,8 @@ def inject_pain_points(conn, extracted_data):
                 category = str(point.get("category", "other")).strip().lower()
                 valid_cats = {
                     "work", "study", "life", "computer", "phone",
-                    "internet", "other",
+                    "internet", "other", "health", "office", "shopping",
+                    "travel", "finance", "education",
                 }
                 if category not in valid_cats:
                     category = "other"
@@ -397,6 +493,7 @@ def inject_pain_points(conn, extracted_data):
 
                 keywords = str(point.get("keywords", "")).strip()
                 feas_reason = str(point.get("feasibility_reason", "AI提取"))
+                original_text = point.get("original_text") or None
 
                 point_data = {
                     "post_id": post_id,
@@ -405,6 +502,7 @@ def inject_pain_points(conn, extracted_data):
                     "feasibility": feasibility,
                     "feasibility_reason": feas_reason,
                     "keywords": keywords,
+                    "original_text": original_text,
                 }
 
                 cluster_pain_points(conn, [point_data])
@@ -433,6 +531,7 @@ def cluster_pain_points(conn, new_points):
             feasibility=point["feasibility"],
             feasibility_reason=point["feasibility_reason"],
             keywords=point["keywords"],
+            original_text=point.get("original_text"),
         )
 
         point_kw = set(k.strip().lower() for k in point["keywords"].split(",") if k.strip())

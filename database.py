@@ -46,6 +46,7 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
         description TEXT NOT NULL,
+        original_text TEXT,
         category TEXT,
         feasibility INTEGER,
         feasibility_reason TEXT,
@@ -174,14 +175,14 @@ def count_posts_today(conn):
 # ============================================================
 
 def insert_pain_point(conn, post_id, description, category, feasibility,
-                      feasibility_reason, keywords):
+                      feasibility_reason, keywords, original_text=None):
     """插入痛点，返回痛点ID"""
     cursor = conn.execute(
         """INSERT INTO pain_points
-           (post_id, description, category, feasibility,
+           (post_id, description, original_text, category, feasibility,
             feasibility_reason, keywords, extracted_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
-        (post_id, description, category, feasibility,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (post_id, description, original_text, category, feasibility,
          feasibility_reason, keywords, datetime.now().isoformat())
     )
     conn.commit()
@@ -448,3 +449,83 @@ def get_stats(conn):
     stats["trend_dist"] = {r["trend"]: r["cnt"] for r in rows}
 
     return stats
+
+
+def get_pain_points_with_posts(conn, limit=200, category=None, exclude_dev=True):
+    """
+    获取痛点列表（含帖子信息），用于卡片式看板。
+    只返回大众化日常痛点，排除专业开发需求。
+    """
+    DEV_TERMS = [
+        "kubernetes", "docker", "container", "microservice", "微服务",
+        "机器学习", "深度学习", "neural network", "compiler", "编译器",
+        "blockchain", "区块链", "distributed", "分布式", "embedded",
+        "嵌入式", "kernel", "内核", "firmware",
+        "K8s", "CI/CD", "devops", "container",
+        "cursor", "claude code", "codex", "antigravity", "chatgpt plus",
+        "IDE", "编程框架", "RAG", "vector database", "向量库",
+        "Codex", "Cursor",
+        # 新增 — 更多专业开发术语排除
+        "react", "vue", "angular", "svelte", "nextjs", "nuxt",
+        "typescript", "rust", "golang", "kotlin", "swift",
+        "webpack", "vite", "rollup", "esbuild",
+        "postgresql", "mongodb", "redis", "elasticsearch",
+        "graphql", "grpc", "protobuf", "thrift",
+        "terraform", "ansible", "puppet", "helm",
+        "linux kernel", "system call", "syscall",
+        "reverse engineering", "逆向",
+        "fpga", "verilog", "vhdl",
+        "cryptography", "密码学",
+        "concurrency", "并发", "multithreading", "多线程",
+        "garbage collection", "GC", "内存管理",
+        "compiler optimization", "JIT",
+        "webassembly", "WASM",
+        "kafka", "rabbitmq", "celery",
+        "nginx", "apache", "load balancer",
+    ]
+
+    query = """
+        SELECT pp.id, pp.description, pp.original_text, pp.category,
+               pp.feasibility, pp.feasibility_reason, pp.keywords,
+               pp.extracted_at,
+               p.platform, p.title, p.url, p.post_id
+        FROM pain_points pp
+        JOIN posts p ON pp.post_id = p.id
+        WHERE pp.description IS NOT NULL AND trim(pp.description) != ''
+    """
+    params = []
+
+    if category:
+        query += " AND pp.category = ?"
+        params.append(category)
+
+    if exclude_dev:
+        for i, term in enumerate(DEV_TERMS):
+            query += f" AND (lower(pp.description) NOT LIKE ? AND lower(coalesce(pp.keywords, '')) NOT LIKE ?)"
+            params.append(f"%{term.lower()}%")
+            params.append(f"%{term.lower()}%")
+
+    query += " ORDER BY pp.extracted_at DESC LIMIT ?"
+    params.append(limit)
+
+    rows = conn.execute(query, params).fetchall()
+    results = []
+    for r in rows:
+        d = dict(r)
+        english_platforms = ("hackernews", "reddit", "stackoverflow", "producthunt")
+        d["is_english"] = d.get("platform", "").lower() in english_platforms
+        results.append(d)
+
+    return results
+
+
+def get_pain_point_post_detail(conn, pain_point_id):
+    """获取单个痛点的帖子详情"""
+    row = conn.execute(
+        """SELECT p.title, p.content, p.url, p.platform, p.posted_at
+           FROM pain_points pp
+           JOIN posts p ON pp.post_id = p.id
+           WHERE pp.id = ?""",
+        (pain_point_id,)
+    ).fetchone()
+    return dict(row) if row else None
