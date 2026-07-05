@@ -692,7 +692,7 @@ body {
             <div class="stat-mini">痛点 <strong id="statPP">0</strong></div>
             <div class="stat-mini">帖子 <strong id="statPosts">0</strong></div>
             <button class="btn-submit" onclick="openModal()">
-                <span class="pulse-dot"></span> 我要诉求
+                <span class="pulse-dot"></span> 我有诉求
             </button>
         </div>
     </div>
@@ -893,7 +893,8 @@ function getCatBadgeClass(cat) {
 
 function getPlatformName(platform) {
     const m = { v2ex: 'V2EX', douyin: '抖音', weibo: '微博', baidu: '百度',
-        hackernews: 'HN', reddit: 'Reddit', stackoverflow: 'SO', producthunt: 'PH' };
+        hackernews: 'HN', reddit: 'Reddit', stackoverflow: 'SO', producthunt: 'PH',
+        user_request: '用户诉求' };
     return m[platform] || platform || '未知';
 }
 

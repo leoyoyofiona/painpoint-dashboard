@@ -323,6 +323,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
             db_path = os.path.join(BASE_DIR, "painpoints.db")
             conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA journal_mode = WAL")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS user_requests (
@@ -335,16 +336,84 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     created_at TEXT NOT NULL
                 )
             """)
+
+            # ===== 同步采集：把用户诉求走痛点提取流程 =====
+            category = "other"
+            keywords_str = ""
+            feasibility = 3
+            cluster_ok = False
+
+            try:
+                from processor import _categorize, _extract_keywords, _estimate_feasibility, cluster_pain_points
+                from database import insert_post, insert_pain_point
+
+                # 自动分类
+                category = _categorize(description)
+
+                # 提取关键词
+                kws = _extract_keywords(description, topk=6)
+                keywords_str = ",".join(kws) if kws else "用户诉求"
+
+                # 可行性评分（用户主动提的，默认较高）
+                feasibility = _estimate_feasibility(description, [], "user_request")
+                if feasibility < 3:
+                    feasibility = 3
+
+                # 插入 posts 表（platform=user_request）
+                import hashlib
+                fake_post_id = hashlib.md5(description.encode()).hexdigest()[:16]
+                insert_post(
+                    conn,
+                    platform="user_request",
+                    post_id=f"ur_{fake_post_id}",
+                    title=description[:200],
+                    content=description,
+                    author=email or "匿名用户",
+                    url="",
+                    reply_count=0,
+                    posted_at=datetime.now().isoformat(),
+                )
+
+                # 获取刚插入的 post id
+                post_row = conn.execute(
+                    "SELECT id FROM posts WHERE platform='user_request' AND post_id=? ORDER BY id DESC LIMIT 1",
+                    (f"ur_{fake_post_id}",)
+                ).fetchone()
+                post_pk = post_row["id"] if post_row else None
+
+                # 构建痛点数据
+                point_data = {
+                    "post_id": post_pk,
+                    "description": description[:150],
+                    "original_text": None,
+                    "category": category,
+                    "feasibility": feasibility,
+                    "feasibility_reason": "用户主动提交",
+                    "keywords": keywords_str,
+                }
+
+                # 聚类入库
+                clustered = cluster_pain_points(conn, [point_data])
+                cluster_ok = clustered > 0
+
+            except Exception as e:
+                traceback.print_exc()
+                # 痛点入库失败不影响 user_requests 记录
+
+            # 保存到 user_requests 表（category 用自动分类结果）
             conn.execute(
                 """INSERT INTO user_requests
                    (description, email, category, source, ip, created_at)
                    VALUES (?, ?, ?, ?, ?, ?)""",
-                (description, email, "user_submitted", "web", ip, datetime.now().isoformat())
+                (description, email, category, "web", ip, datetime.now().isoformat())
             )
             conn.commit()
             conn.close()
 
-            self._serve_json({"message": "诉求已提交，感谢你的参与！"})
+            result = {"message": "诉求已提交，感谢你的参与！", "category": category}
+            if cluster_ok:
+                result["synced"] = True
+            self._serve_json(result)
 
         except json.JSONDecodeError:
             self._serve_json({"error": "请求格式错误"}, 400)
@@ -419,6 +488,15 @@ if __name__ == "__main__":
 
     scheduler = threading.Thread(target=scheduler_loop, daemon=True)
     scheduler.start()
+
+    # 预热 jieba（避免首次请求超时）
+    try:
+        print("  正在预热 NLP 引擎...", flush=True)
+        import jieba
+        jieba.initialize()
+        print("  jieba 预热完成", flush=True)
+    except Exception:
+        pass
 
     with ThreadingTCPServer((BIND, PORT), Handler) as httpd:
         print(f"  看板地址: http://localhost:{PORT}", flush=True)
