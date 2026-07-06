@@ -47,6 +47,7 @@ def init_db():
         post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
         description TEXT NOT NULL,
         original_text TEXT,
+        inspiration TEXT,
         category TEXT,
         feasibility INTEGER,
         feasibility_reason TEXT,
@@ -118,6 +119,12 @@ def init_db():
     CREATE INDEX IF NOT EXISTS idx_ur_created ON user_requests(created_at);
     """)
 
+    # 迁移：给 pain_points 表添加 inspiration 列（如果不存在）
+    try:
+        conn.execute("ALTER TABLE pain_points ADD COLUMN inspiration TEXT")
+    except sqlite3.OperationalError:
+        pass  # 列已存在
+
     conn.commit()
     conn.close()
 
@@ -175,14 +182,14 @@ def count_posts_today(conn):
 # ============================================================
 
 def insert_pain_point(conn, post_id, description, category, feasibility,
-                      feasibility_reason, keywords, original_text=None):
+                      feasibility_reason, keywords, original_text=None, inspiration=None):
     """插入痛点，返回痛点ID"""
     cursor = conn.execute(
         """INSERT INTO pain_points
-           (post_id, description, original_text, category, feasibility,
+           (post_id, description, original_text, inspiration, category, feasibility,
             feasibility_reason, keywords, extracted_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (post_id, description, original_text, category, feasibility,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (post_id, description, original_text, inspiration, category, feasibility,
          feasibility_reason, keywords, datetime.now().isoformat())
     )
     conn.commit()
@@ -485,7 +492,7 @@ def get_pain_points_with_posts(conn, limit=200, category=None, exclude_dev=True)
     ]
 
     query = """
-        SELECT pp.id, pp.description, pp.original_text, pp.category,
+        SELECT pp.id, pp.description, pp.inspiration, pp.original_text, pp.category,
                pp.feasibility, pp.feasibility_reason, pp.keywords,
                pp.extracted_at,
                p.platform, p.title, p.url, p.post_id

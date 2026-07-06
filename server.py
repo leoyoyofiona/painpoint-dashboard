@@ -48,6 +48,9 @@ STAGE_MAP = [
     ("开始采集 baidu", "collect_baidu"),
     ("开始采集 stackoverflow", "collect_stackoverflow"),
     ("开始采集 producthunt", "collect_producthunt"),
+    ("开始采集 toutiao", "collect_toutiao"),
+    ("开始采集 zhihu", "collect_zhihu"),
+    ("开始采集 ecommerce", "collect_ecommerce"),
     ("开始采集 workbuddy", "collect_workbuddy"),
     ("跳过采集", "skip_collect"),
     ("预筛帖子", "filtering"),
@@ -118,14 +121,17 @@ def _update_stage(line):
 
         # 预估进度百分比
         stage_pct = {
-            "collect_douyin": 15,
-            "collect_hackernews": 25,
-            "collect_reddit": 35,
-            "collect_v2ex": 45,
-            "collect_weibo": 50,
-            "collect_baidu": 55,
-            "collect_stackoverflow": 60,
-            "collect_producthunt": 63,
+            "collect_douyin": 8,
+            "collect_hackernews": 14,
+            "collect_reddit": 20,
+            "collect_v2ex": 26,
+            "collect_weibo": 32,
+            "collect_baidu": 38,
+            "collect_stackoverflow": 44,
+            "collect_producthunt": 48,
+            "collect_toutiao": 52,
+            "collect_zhihu": 56,
+            "collect_ecommerce": 60,
             "collect_workbuddy": 65,
             "filtering": 70,
             "extracting": 75,
@@ -344,7 +350,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             cluster_ok = False
 
             try:
-                from processor import _categorize, _extract_keywords, _estimate_feasibility, cluster_pain_points
+                from processor import _categorize, _extract_keywords, _estimate_feasibility, _generate_inspiration, cluster_pain_points
                 from database import insert_post, insert_pain_point
 
                 # 自动分类
@@ -382,10 +388,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 post_pk = post_row["id"] if post_row else None
 
                 # 构建痛点数据
+                inspiration = _generate_inspiration(
+                    description[:150], keywords_str, category, "need", "user_request"
+                )
                 point_data = {
                     "post_id": post_pk,
                     "description": description[:150],
                     "original_text": None,
+                    "inspiration": inspiration,
                     "category": category,
                     "feasibility": feasibility,
                     "feasibility_reason": "用户主动提交",

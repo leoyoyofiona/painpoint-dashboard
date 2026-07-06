@@ -847,6 +847,120 @@ class WorkBuddySupplementCollector:
 
 
 # ============================================================
+# 今日头条热榜采集器
+# ============================================================
+
+class ToutiaoHotCollector:
+    def fetch(self):
+        posts = []
+        try:
+            resp = requests.get(
+                "https://www.toutiao.com/hot-event/hot-board/?origin=toutiao_pc",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                },
+                timeout=15,
+            )
+            data = resp.json()
+            items = data.get("data", [])
+            for item in items[:40]:
+                title = truncate(item.get("Title", ""), MAX_TITLE_LENGTH)
+                if title and len(title) >= 3:
+                    posts.append({
+                        "post_id": f"tt_{hash(title) % 10**10}",
+                        "title": title,
+                        "content": truncate(item.get("Abstract", title), MAX_CONTENT_LENGTH),
+                        "url": item.get("Url", ""),
+                        "reply_count": item.get("HotValue", 0),
+                    })
+            print(f"  [Toutiao] 采集 {len(posts)} 条热榜")
+        except Exception as e:
+            print(f"  [Toutiao] 采集失败: {e}")
+        return posts
+
+
+# ============================================================
+# 知乎热榜采集器
+# ============================================================
+
+class ZhihuHotCollector:
+    def fetch(self):
+        posts = []
+        try:
+            resp = requests.get(
+                "https://www.zhihu.com/api/v3/feed/topstory/hot-lists/total?limit=50&desktop=true",
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+                },
+                timeout=15,
+            )
+            data = resp.json()
+            items = data.get("data", [])
+            for item in items[:50]:
+                target = item.get("target", {})
+                title = truncate(target.get("title", ""), MAX_TITLE_LENGTH)
+                excerpt = truncate(target.get("excerpt", ""), MAX_CONTENT_LENGTH // 3)
+                if title and len(title) >= 3:
+                    posts.append({
+                        "post_id": f"zh_{target.get('id', hash(title))}",
+                        "title": title,
+                        "content": excerpt or title,
+                        "url": target.get("url", ""),
+                        "reply_count": item.get("detail_text", 0),
+                    })
+            print(f"  [Zhihu] 采集 {len(posts)} 条热榜")
+        except Exception as e:
+            print(f"  [Zhihu] 采集失败: {e}")
+        return posts
+
+
+# ============================================================
+# 电商场景采集器（淘宝/京东搜索热词 → 模拟需求）
+# ============================================================
+
+class EcommerceCollector:
+    """
+    电商场景需求采集：
+    利用淘宝/京东搜索建议 API 发现真实消费需求，
+    这些搜索词反映了用户「想买但不知道选什么/怎么选」的决策困境
+    """
+    def fetch(self):
+        posts = []
+        from config import TAOBAO_SEARCH_KEYWORDS
+
+        for kw in TAOBAO_SEARCH_KEYWORDS:
+            try:
+                # 淘宝搜索建议 API
+                encoded_kw = quote(kw)
+                resp = requests.get(
+                    f"https://suggest.taobao.com/sug?code=utf-8&q={encoded_kw}&callback=",
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Referer": "https://www.taobao.com/",
+                    },
+                    timeout=10,
+                )
+                data = json.loads(resp.text)
+                suggestions = data.get("result", [])
+                for sug in suggestions[:5]:
+                    title = sug[0] if isinstance(sug, list) else str(sug)
+                    if title and len(title) >= 4:
+                        posts.append({
+                            "post_id": f"ec_{hash(title) % 10**10}",
+                            "title": f"想找: {title}",
+                            "content": f"电商搜索需求: 用户想找「{title}」，面临选品/比价/决策困扰",
+                            "url": "",
+                            "reply_count": 1,
+                        })
+                time.sleep(0.5)  # 控制频率
+            except Exception as e:
+                print(f"  [Ecommerce/{kw}] 失败: {e}")
+
+        print(f"  [Ecommerce] 采集 {len(posts)} 条消费需求")
+        return posts
+
+
+# ============================================================
 # 统一采集入口
 # ============================================================
 
@@ -864,6 +978,9 @@ def collect_all():
         ("baidu", BaiduHotCollector),
         ("stackoverflow", StackOverflowCollector),
         ("producthunt", ProductHuntCollector),
+        ("toutiao", ToutiaoHotCollector),
+        ("zhihu", ZhihuHotCollector),
+        ("ecommerce", EcommerceCollector),
         ("workbuddy", WorkBuddySupplementCollector),
     ]
 

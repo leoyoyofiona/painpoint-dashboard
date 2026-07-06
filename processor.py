@@ -16,6 +16,7 @@ from config import (
     PAIN_KEYWORDS, NEED_KEYWORDS, TOOL_KEYWORDS,
     EN_PAIN, EN_NEED, EN_TOOL,
     EXCLUDE_KEYWORDS, EN_EXCLUDE,
+    CASUAL_CHAT_FILTERS, PURE_NEWS_FILTERS, ENTERTAINMENT_FILTERS,
     CLUSTER_THRESHOLD,
     WEIGHT_FREQUENCY, WEIGHT_RECENCY, WEIGHT_FEASIBILITY,
     RECENCY_HALFLIFE_DAYS,
@@ -181,6 +182,103 @@ def _is_code_solvable(text, signal_words):
     return False
 
 
+def _is_quality_content(text, platform=""):
+    """
+    判断内容是否为高质量的需求内容，剔除闲聊/纯娱乐/新闻
+    返回 True 表示内容有价值，False 表示低质量需要过滤
+    """
+    text_lower = text.lower()
+
+    # 太短的内容可能是闲聊
+    if len(text.strip()) < 8:
+        return False
+
+    # 检查闲聊信号
+    for kw in CASUAL_CHAT_FILTERS:
+        if kw in text_lower:
+            return False
+
+    # 检查纯新闻信号
+    for kw in PURE_NEWS_FILTERS:
+        if kw in text_lower:
+            return False
+
+    # 检查娱乐/追星信号（热搜类平台需要更严格）
+    if platform in ("weibo", "baidu", "douyin"):
+        for kw in ENTERTAINMENT_FILTERS:
+            if kw in text_lower:
+                return False
+
+    return True
+
+
+def _generate_inspiration(description, keywords, category, signal_type, platform):
+    """
+    根据痛点描述、关键词、分类生成 1-2 句「灵感摘要」
+    灵感摘要直接告诉用户：可以用什么项目/工具解决什么问题
+    """
+    keywords_list = [k.strip() for k in keywords.split(",") if k.strip()]
+    desc = description.strip()
+
+    # 提取核心动词/动作
+    action_words = []
+    action_signals = {
+        "自动": "自动化", "一键": "一键操作", "批量": "批量处理",
+        "整理": "整理归类", "管理": "管理", "提醒": "智能提醒",
+        "搜索": "精准搜索", "推荐": "智能推荐", "对比": "对比分析",
+        "翻译": "自动翻译", "转换": "格式转换", "备份": "自动备份",
+        "分析": "智能分析", "统计": "数据统计", "汇总": "信息汇总",
+        "跟踪": "实时跟踪", "监控": "智能监控", "预测": "趋势预测",
+        "生成": "自动生成", "制作": "快速制作", "编辑": "智能编辑",
+        "识别": "智能识别", "提取": "信息提取", "筛选": "精准筛选",
+        "比价": "比价", "记账": "记账", "预算": "预算管理",
+        "打卡": "打卡", "签到": "签到", "待办": "待办管理",
+    }
+    for kw, action in action_signals.items():
+        if kw in desc:
+            action_words.append(action)
+
+    # 提取问题领域
+    problem_signals = {
+        "文件": "文件管理", "发票": "发票管理", "笔记": "笔记整理",
+        "照片": "照片管理", "密码": "密码管理", "账单": "账单分析",
+        "日程": "日程安排", "邮件": "邮件管理", "快递": "快递跟踪",
+        "阅读": "阅读效率", "学习": "学习效率", "购物": "购物决策",
+        "健康": "健康管理", "饮食": "饮食规划", "理财": "个人理财",
+        "文档": "文档处理", "表格": "表格处理",
+    }
+    problem_area = ""
+    for kw, area in problem_signals.items():
+        if kw in desc:
+            problem_area = area
+            break
+
+    # 生成灵感摘要
+    if action_words and problem_area:
+        return f"做一款{problem_area}工具，实现{action_words[0]}"
+
+    if action_words and keywords_list:
+        return f"开发一个{action_words[0]}的工具——大家需要高效处理{keywords_list[0]}"
+
+    if problem_area:
+        if signal_type in ("pain", "both"):
+            return f"优化{problem_area}体验——很多人都有这个困扰"
+        return f"打造一个{problem_area}方案，解决大众的真实需求"
+
+    # 兜底：用关键词组合
+    if keywords_list:
+        top_kws = keywords_list[:3]
+        kw_str = "、".join(top_kws)
+        if signal_type in ("pain", "both"):
+            return f"解决「{kw_str}」相关的痛点——值得做一个工具"
+        return f"围绕「{kw_str}」做一个实用工具"
+
+    # 最终兜底
+    if len(desc) > 40:
+        return desc[:40] + "..."
+    return desc[:60]
+
+
 def _detect_pain_signal(text):
     """
     检测文本中的痛点/需求信号
@@ -223,6 +321,7 @@ def should_process(title, content):
     """
     判断帖子是否值得处理
     放宽条件：只要包含 痛点词 OR 需求词 即可通过（不再强制要求工具词）
+    新增：内容质量过滤 — 剔除闲聊/纯娱乐/新闻类低质量内容
     """
     _ensure_jieba()
     text = f"{title} {content}".lower()
@@ -232,6 +331,10 @@ def should_process(title, content):
     en_exclude = any(kw in text for kw in EN_EXCLUDE)
     if cn_exclude or en_exclude:
         return False
+
+    # 内容质量过滤 — 剔除闲聊/娱乐/新闻
+    # 但在这一步仅做初筛，完整过滤在 extract_pain_points_auto 中做
+    # 因为这里不做平台判断，保留宽松条件
 
     # 检测痛点/需求信号
     has_signal, _, _ = _detect_pain_signal(text)
@@ -287,6 +390,12 @@ def extract_pain_points_auto(conn, verbose=False):
         # 检测痛点信号
         has_signal, signal_type, signal_words = _detect_pain_signal(full_text)
 
+        # 内容质量过滤 — 剔除闲聊/纯娱乐/新闻
+        if has_signal and not _is_quality_content(full_text, platform):
+            mark_post_processed(conn, post_id)
+            skipped_count += 1
+            continue
+
         if not has_signal:
             # 无信号 — 尝试更宽松的匹配：标题本身就是问题/需求
             # 热搜榜类内容（抖音/微博/百度）的标题通常是用户关注的热点
@@ -309,14 +418,18 @@ def extract_pain_points_auto(conn, verbose=False):
                     if platform.lower() in english_platforms:
                         orig_text = content[:500] if content else title
 
+                    kw_str = ",".join(keywords)
+                    inspiration = _generate_inspiration(pain_desc, kw_str, category, None, platform)
+
                     all_extracted.append({
                         "post_id": post_id,
                         "description": pain_desc,
                         "original_text": orig_text,
+                        "inspiration": inspiration,
                         "category": category,
                         "feasibility": feas,
                         "feasibility_reason": "热搜话题提取",
-                        "keywords": ",".join(keywords),
+                        "keywords": kw_str,
                     })
                     processed_count += 1
                     mark_post_processed(conn, post_id)
@@ -346,14 +459,18 @@ def extract_pain_points_auto(conn, verbose=False):
         if platform.lower() in english_platforms:
             orig_text = content[:500] if content else title
 
+        kw_str = ",".join(all_kw)
+        inspiration = _generate_inspiration(pain_desc, kw_str, category, signal_type, platform)
+
         all_extracted.append({
             "post_id": post_id,
             "description": pain_desc,
             "original_text": orig_text,
+            "inspiration": inspiration,
             "category": category,
             "feasibility": feas,
             "feasibility_reason": f"信号类型: {signal_type}, 信号词: {','.join(signal_words[:3])}",
-            "keywords": ",".join(all_kw),
+            "keywords": kw_str,
         })
         processed_count += 1
         mark_post_processed(conn, post_id)
@@ -506,6 +623,7 @@ def inject_pain_points(conn, extracted_data):
                     "feasibility_reason": feas_reason,
                     "keywords": keywords,
                     "original_text": original_text,
+                    "inspiration": point.get("inspiration"),
                 }
 
                 cluster_pain_points(conn, [point_data])
@@ -535,6 +653,7 @@ def cluster_pain_points(conn, new_points):
             feasibility_reason=point["feasibility_reason"],
             keywords=point["keywords"],
             original_text=point.get("original_text"),
+            inspiration=point.get("inspiration"),
         )
 
         point_kw = set(k.strip().lower() for k in point["keywords"].split(",") if k.strip())

@@ -610,6 +610,27 @@ body {
     overflow: hidden;
     margin-bottom: 6px;
 }
+/* Inspiration summary — bold, eye-catching */
+.card-insp {
+    font-size: 14px; font-weight: 700;
+    color: #4361ee;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 3px;
+}
+.card-title-sub {
+    font-size: 12px; font-weight: 400;
+    color: var(--text-muted);
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 6px;
+}
 .card-tags {
     display: flex; align-items: center; gap: 8px;
     flex-wrap: wrap;
@@ -1042,18 +1063,24 @@ function renderFeasStars(score) {
 
 function renderCard(pp, idx) {
     const cat = pp.category || 'other';
+    const insp = pp.inspiration || '';
     const desc = pp.description || pp.title || '';
     const isEnglish = pp.is_english;
     const origText = pp.original_text || '';
     const keywords = (pp.keywords || '').split(',').filter(k => k.trim()).slice(0, 6);
     const platform = pp.platform || '';
 
-    // Collapsed view — minimal
+    // Collapsed view — show inspiration as main text, title as subtext
     let html = '<div class="pain-card" onclick="toggleCard(this)" data-index="' + idx + '">';
     html += '<div class="card-collapsed">';
     html += '<div class="card-num">' + idx + '</div>';
     html += '<div class="card-main">';
-    html += '<div class="card-title">' + escapeHtml(desc) + '</div>';
+    if (insp) {
+        html += '<div class="card-insp">' + escapeHtml(insp) + '</div>';
+        html += '<div class="card-title-sub">' + escapeHtml(desc) + '</div>';
+    } else {
+        html += '<div class="card-title">' + escapeHtml(desc) + '</div>';
+    }
     html += '<div class="card-tags">';
     html += '<span class="' + getCatBadgeClass(cat) + '">' + (catNames[cat] || cat) + '</span>';
     html += '<span class="platform-badge">' + getPlatformName(platform) + '</span>';
@@ -1137,6 +1164,9 @@ const STAGE_LABELS = {
     'collect_baidu': '采集百度',
     'collect_stackoverflow': '采集 Stack Overflow',
     'collect_producthunt': '采集 Product Hunt',
+    'collect_toutiao': '采集今日头条',
+    'collect_zhihu': '采集知乎',
+    'collect_ecommerce': '采集电商需求',
     'collect_workbuddy': '采集补充源',
     'filtering': '筛选过滤',
     'extracting': '提取痛点',
