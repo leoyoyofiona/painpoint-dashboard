@@ -15,7 +15,7 @@ import traceback
 import io
 import contextlib
 from datetime import datetime, timedelta, timezone
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
 
 PORT = int(os.environ.get("PORT", 7531))
 BIND = "0.0.0.0"
@@ -173,6 +173,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def _path(self):
         return urlparse(self.path).path
 
+    @property
+    def query_params(self):
+        return parse_qs(urlparse(self.path).query)
+
     def do_GET(self):
         try:
             p = self._path()
@@ -196,6 +200,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._serve_json({"status": "ok"})
             elif p == "/api/user-requests":
                 self._handle_get_user_requests()
+            elif p == "/api/search-requests":
+                self._handle_search_user_requests()
             elif p == "/api/rankings":
                 self._handle_get_rankings()
             elif p.startswith("/api/clusters/"):
@@ -476,20 +482,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
             row = conn.execute("SELECT COUNT(*) as cnt FROM user_requests").fetchone()
             total = row["cnt"] if row else 0
 
-            # 最近20条（脱敏：不返回email和ip）
+            # 最近50条（返回email以支持搜索和展示）
             rows = conn.execute(
-                """SELECT description, created_at FROM user_requests
-                   ORDER BY id DESC LIMIT 20"""
+                """SELECT id, description, email, category, created_at FROM user_requests
+                   ORDER BY id DESC LIMIT 50"""
             ).fetchall()
 
             requests = []
             for r in rows:
                 desc = r["description"]
-                # 脱敏：截断过长描述
-                if len(desc) > 120:
-                    desc = desc[:120] + "..."
+                if len(desc) > 200:
+                    desc = desc[:200] + "..."
                 requests.append({
+                    "id": r["id"],
                     "description": desc,
+                    "email": r["email"] or "",
+                    "category": r["category"] or "",
                     "created_at": r["created_at"],
                 })
 
@@ -499,6 +507,61 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             traceback.print_exc()
             self._serve_json({"total": 0, "requests": [], "error": str(e)}, 500)
+
+    def _handle_search_user_requests(self):
+        """搜索用户诉求：按邮箱或描述内容查找"""
+        try:
+            query = (self.query_params.get("q") or [""])[0].strip()
+            if not query or len(query) < 1:
+                self._serve_json({"results": [], "hint": "请输入搜索关键词（邮箱或诉求内容）"}, 200)
+                return
+
+            db_path = os.path.join(BASE_DIR, "painpoints.db")
+            conn = sqlite3.connect(db_path)
+            conn.row_factory = sqlite3.Row
+
+            # 确保表存在
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS user_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    description TEXT NOT NULL,
+                    email TEXT,
+                    category TEXT,
+                    source TEXT DEFAULT 'web',
+                    ip TEXT,
+                    created_at TEXT NOT NULL
+                )
+            """)
+
+            # 模糊搜索：邮箱或描述
+            like_q = f"%{query}%"
+            rows = conn.execute(
+                """SELECT id, description, email, category, created_at
+                   FROM user_requests
+                   WHERE email LIKE ? OR description LIKE ?
+                   ORDER BY id DESC LIMIT 30""",
+                (like_q, like_q)
+            ).fetchall()
+
+            results = []
+            for r in rows:
+                desc = r["description"]
+                if len(desc) > 200:
+                    desc = desc[:200] + "..."
+                results.append({
+                    "id": r["id"],
+                    "description": desc,
+                    "email": r["email"] or "",
+                    "category": r["category"] or "",
+                    "created_at": r["created_at"],
+                })
+
+            conn.close()
+            self._serve_json({"results": results, "query": query})
+
+        except Exception as e:
+            traceback.print_exc()
+            self._serve_json({"results": [], "error": str(e)}, 500)
 
     def _handle_get_rankings(self):
         """获取总排行榜和各分类排行榜"""

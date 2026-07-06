@@ -463,21 +463,37 @@ body {
 }
 .ur-list {
     display: flex;
-    gap: 10px;
-    overflow-x: auto;
-    padding-bottom: 6px;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
 }
-.ur-list::-webkit-scrollbar { height: 4px; }
+.ur-list::-webkit-scrollbar { width: 4px; }
 .ur-list::-webkit-scrollbar-thumb { background: #ffc9cc; border-radius: 2px; }
 .ur-item {
     background: #fff;
     border: 1px solid #ffe0e6;
     border-radius: 8px;
     padding: 10px 14px;
-    min-width: 260px;
-    max-width: 300px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.ur-item-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b6b, #ee5a6f);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
 }
+.ur-item-body { flex: 1; min-width: 0; }
 .ur-item-text {
     font-size: 13px;
     color: var(--text);
@@ -487,10 +503,34 @@ body {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-.ur-item-time {
+.ur-item-email {
+    font-size: 11px;
+    color: #e03131;
+    font-weight: 500;
+    margin-top: 4px;
+}
+.ur-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
     font-size: 11px;
     color: var(--text-muted);
-    margin-top: 6px;
+}
+.ur-item-time { color: var(--text-muted); }
+.ur-item-cat {
+    background: #fff0f3;
+    color: #e03131;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+}
+.ur-empty {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+    font-size: 14px;
 }
 
 /* ===== Container ===== */
@@ -809,7 +849,6 @@ body {
     .modal-box { border-radius: 12px; }
     .modal-header { padding: 20px; }
     .modal-body { padding: 20px; }
-    .ur-item { min-width: 220px; }
 }
 
 /* ===== 排行榜视图 ===== */
@@ -1019,12 +1058,14 @@ body {
 
 <div class="container">
     <!-- User Submitted Requests -->
-    <div class="user-requests-section" id="userRequestsSection" style="display:none;">
+    <div class="user-requests-section" id="userRequestsSection">
         <div class="ur-header">
             <h2>🗣️ 大家都在说</h2>
             <span class="ur-count" id="urCount">0 人参与</span>
         </div>
-        <div class="ur-list" id="urList"></div>
+        <div class="ur-list" id="urList">
+            <div class="ur-empty">还没有人提交诉求，来做第一个吧 💡</div>
+        </div>
     </div>
 
     <!-- Filters -->
@@ -1106,7 +1147,7 @@ function renderFilters() {
             '<span class="count">' + list.length + '</span></button>';
     });
 
-    html += '<input type="text" class="search-box" id="searchBox" placeholder="🔍 搜索痛点...">';
+    html += '<input type="text" class="search-box" id="searchBox" placeholder="🔍 搜索痛点或邮箱...">';
     bar.innerHTML = html;
 
     bar.querySelectorAll('.cat-btn').forEach(btn => {
@@ -1121,6 +1162,63 @@ function renderFilters() {
     document.getElementById('searchBox').addEventListener('input', e => {
         searchQuery = e.target.value.toLowerCase().trim();
         renderCards();
+        // 同时搜索用户诉求
+        searchUserRequestsDebounced(searchQuery);
+    });
+}
+
+// ===== Search User Requests =====
+let _searchTimer = null;
+function searchUserRequestsDebounced(query) {
+    if (_searchTimer) clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(() => searchUserRequests(query), 300);
+}
+
+function searchUserRequests(query) {
+    if (!query) {
+        // 无搜索词时显示全部
+        renderUserRequests(allUserRequests);
+        return;
+    }
+
+    // 先在本地过滤
+    const localMatches = allUserRequests.filter(r => {
+        const desc = (r.description || '').toLowerCase();
+        const email = (r.email || '').toLowerCase();
+        return desc.includes(query) || email.includes(query);
+    });
+
+    // 远程搜索（服务器端模糊匹配，更准确）
+    fetch('/api/search-requests?q=' + encodeURIComponent(query))
+    .then(r => r.json())
+    .then(data => {
+        if (data.results && data.results.length > 0) {
+            // 合并并去重
+            const ids = new Set(localMatches.map(r => r.id));
+            const merged = [...localMatches];
+            data.results.forEach(r => {
+                if (!ids.has(r.id)) {
+                    merged.push(r);
+                    ids.add(r.id);
+                }
+            });
+            renderUserRequests(merged);
+        } else if (localMatches.length > 0) {
+            renderUserRequests(localMatches);
+        } else {
+            // 无匹配
+            const list = document.getElementById('urList');
+            list.innerHTML = '<div class="ur-empty">未找到包含 <b>"' + escapeHtml(query) + '"</b> 的诉求<br>试试输入邮箱或诉求关键词 🔍</div>';
+        }
+    })
+    .catch(() => {
+        // 远程搜索失败，使用本地结果
+        if (localMatches.length > 0) {
+            renderUserRequests(localMatches);
+        } else {
+            const list = document.getElementById('urList');
+            list.innerHTML = '<div class="ur-empty">未找到匹配的诉求 🔍</div>';
+        }
     });
 }
 
@@ -1527,24 +1625,54 @@ function resetModal() {
 }
 
 // ===== Load User Requests =====
+let allUserRequests = [];
+
 function loadUserRequests() {
     fetch('/api/user-requests')
     .then(r => r.json())
     .then(data => {
-        if (!data.total || data.total === 0) return;
-        document.getElementById('userRequestsSection').style.display = 'block';
-        document.getElementById('urCount').textContent = data.total + ' 人参与';
-
-        const list = document.getElementById('urList');
-        list.innerHTML = data.requests.map(r => {
-            const time = formatTime(r.created_at);
-            return '<div class="ur-item">' +
-                '<div class="ur-item-text">' + escapeHtml(r.description) + '</div>' +
-                '<div class="ur-item-time">' + time + '</div>' +
-                '</div>';
-        }).join('');
+        allUserRequests = data.requests || [];
+        document.getElementById('urCount').textContent = (data.total || 0) + ' 人参与';
+        renderUserRequests(allUserRequests);
     })
     .catch(() => {});
+}
+
+function renderUserRequests(requests) {
+    const list = document.getElementById('urList');
+    if (!requests || requests.length === 0) {
+        list.innerHTML = '<div class="ur-empty">还没有人提交诉求，来做第一个吧 💡</div>';
+        return;
+    }
+
+    list.innerHTML = requests.map(r => {
+        const time = formatTime(r.created_at);
+        const email = r.email || '';
+        const desc = r.description || '';
+        // 取邮箱首字母做头像
+        const avatarLetter = email ? email.charAt(0).toUpperCase() : '?';
+        const catNamesLocal = { work: '工作', study: '学习', life: '生活', health: '健康',
+            office: '办公', shopping: '购物', travel: '出行', finance: '理财',
+            internet: '网络', phone: '手机', computer: '电脑', other: '其他' };
+        const catName = catNamesLocal[r.category] || '';
+
+        let emailHtml = '';
+        if (email) {
+            emailHtml = '<div class="ur-item-email">📧 ' + escapeHtml(email) + '</div>';
+        }
+
+        return '<div class="ur-item">' +
+            '<div class="ur-item-avatar">' + escapeHtml(avatarLetter) + '</div>' +
+            '<div class="ur-item-body">' +
+                '<div class="ur-item-text">' + escapeHtml(desc) + '</div>' +
+                emailHtml +
+                '<div class="ur-item-meta">' +
+                    '<span class="ur-item-time">' + time + '</span>' +
+                    (catName ? '<span class="ur-item-cat">' + escapeHtml(catName) + '</span>' : '') +
+                '</div>' +
+            '</div>' +
+            '</div>';
+    }).join('');
 }
 
 function formatTime(isoStr) {
