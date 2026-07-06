@@ -175,6 +175,120 @@ body {
     border-radius: 50%;
     animation: pulse 1.5s ease-in-out infinite;
 }
+
+/* ===== Re-crawl Button ===== */
+.btn-recrawl {
+    background: linear-gradient(135deg, #4361ee, #4cc9f0);
+    color: #fff;
+    border: none;
+    border-radius: 25px;
+    padding: 10px 22px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 14px rgba(67,97,238,0.35);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.btn-recrawl:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(67,97,238,0.45);
+}
+.btn-recrawl:active { transform: translateY(0); }
+.btn-recrawl:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+.btn-recrawl .spin-icon {
+    display: inline-block;
+    font-size: 16px;
+    line-height: 1;
+}
+.btn-recrawl.disabled .spin-icon {
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ===== Crawl Progress Overlay ===== */
+.crawl-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+.crawl-overlay.show { display: flex; }
+.crawl-modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 36px 32px;
+    width: 90%;
+    max-width: 440px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+}
+.crawl-modal .crawl-icon {
+    font-size: 42px;
+    margin-bottom: 12px;
+    display: inline-block;
+    animation: spin 2s linear infinite;
+}
+.crawl-modal .crawl-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 6px;
+}
+.crawl-modal .crawl-detail {
+    font-size: 14px;
+    color: #6c757d;
+    margin-bottom: 20px;
+    min-height: 20px;
+}
+.crawl-modal .crawl-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+.crawl-modal .crawl-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4361ee, #4cc9f0);
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    width: 0%;
+}
+.crawl-modal .crawl-pct {
+    font-size: 13px;
+    color: #6c757d;
+    margin-bottom: 16px;
+}
+.crawl-modal .crawl-stages {
+    text-align: left;
+    font-size: 12px;
+    color: #999;
+    max-height: 100px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 10px 14px;
+    line-height: 1.8;
+}
+.crawl-modal .crawl-stages .stage-done { color: #28a745; }
+.crawl-modal .crawl-stages .stage-active { color: #4361ee; font-weight: 600; }
 @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.5; transform: scale(1.3); }
@@ -666,6 +780,7 @@ body {
     .banner-slogan .slogan-sub { font-size: 12px; }
     .stats-inline { width: 100%; justify-content: space-between; }
     .btn-submit { padding: 8px 18px; font-size: 14px; }
+    .btn-recrawl { padding: 8px 16px; font-size: 14px; }
     .modal-box { border-radius: 12px; }
     .modal-header { padding: 20px; }
     .modal-body { padding: 20px; }
@@ -691,6 +806,9 @@ body {
         <div class="stats-inline">
             <div class="stat-mini">痛点 <strong id="statPP">0</strong></div>
             <div class="stat-mini">帖子 <strong id="statPosts">0</strong></div>
+            <button class="btn-recrawl" id="recrawlBtn" onclick="triggerRefresh()">
+                <span class="spin-icon">🔄</span> 重新采集
+            </button>
             <button class="btn-submit" onclick="openModal()">
                 <span class="pulse-dot"></span> 我有诉求
             </button>
@@ -726,6 +844,20 @@ body {
             </div>
             <button class="btn-submit-form" id="submitBtn" onclick="submitRequest()">提交诉求</button>
         </div>
+    </div>
+</div>
+
+<!-- Crawl Progress Overlay -->
+<div class="crawl-overlay" id="crawlOverlay">
+    <div class="crawl-modal">
+        <div class="crawl-icon">🔄</div>
+        <div class="crawl-title" id="crawlTitle">正在采集最新数据</div>
+        <div class="crawl-detail" id="crawlDetail">连接数据源中...</div>
+        <div class="crawl-progress-bar">
+            <div class="crawl-progress-fill" id="crawlFill"></div>
+        </div>
+        <div class="crawl-pct" id="crawlPct">0%</div>
+        <div class="crawl-stages" id="crawlStages"></div>
     </div>
 </div>
 
@@ -993,6 +1125,110 @@ function escapeHtml(text) {
 
 function toggleCard(card) {
     card.classList.toggle('expanded');
+}
+
+// ===== Re-crawl (Refresh) =====
+const STAGE_LABELS = {
+    'collect_douyin': '采集抖音热榜',
+    'collect_hackernews': '采集 Hacker News',
+    'collect_reddit': '采集 Reddit',
+    'collect_v2ex': '采集 V2EX',
+    'collect_weibo': '采集微博',
+    'collect_baidu': '采集百度',
+    'collect_stackoverflow': '采集 Stack Overflow',
+    'collect_producthunt': '采集 Product Hunt',
+    'collect_workbuddy': '采集补充源',
+    'filtering': '筛选过滤',
+    'extracting': '提取痛点',
+    'ranking': '排名计算',
+    'trending': '趋势更新',
+    'dashboard': '生成看板',
+    'done': '完成',
+    'idle': '待机',
+};
+
+async function triggerRefresh() {
+    const btn = document.getElementById('recrawlBtn');
+    if (btn.classList.contains('disabled')) return;
+    btn.classList.add('disabled');
+
+    const overlay = document.getElementById('crawlOverlay');
+    const title = document.getElementById('crawlTitle');
+    const detail = document.getElementById('crawlDetail');
+    const fill = document.getElementById('crawlFill');
+    const pct = document.getElementById('crawlPct');
+    const stages = document.getElementById('crawlStages');
+
+    overlay.classList.add('show');
+    title.textContent = '正在采集最新数据';
+    detail.textContent = '连接数据源中...';
+    fill.style.width = '0%';
+    fill.style.background = 'linear-gradient(90deg, #4361ee, #4cc9f0)';
+    pct.textContent = '0%';
+    stages.innerHTML = '';
+
+    try {
+        const resp = await fetch('/api/refresh', { method: 'POST' });
+        if (resp.status === 409) {
+            detail.textContent = '已有采集任务在运行中，正在跟踪进度...';
+        } else if (!resp.ok) {
+            throw new Error('HTTP ' + resp.status);
+        }
+        pollRefreshStatus();
+    } catch(e) {
+        title.textContent = '采集启动失败';
+        detail.textContent = '本地服务器未运行，' + (e.message || '未知错误');
+        fill.style.width = '100%';
+        fill.style.background = '#dc3545';
+        pct.textContent = '';
+        btn.classList.remove('disabled');
+        setTimeout(() => { overlay.classList.remove('show'); }, 3000);
+    }
+}
+
+let _pollTimer = null;
+function pollRefreshStatus() {
+    if (_pollTimer) clearInterval(_pollTimer);
+    const btn = document.getElementById('recrawlBtn');
+    const title = document.getElementById('crawlTitle');
+    const detail = document.getElementById('crawlDetail');
+    const fill = document.getElementById('crawlFill');
+    const pct = document.getElementById('crawlPct');
+    const stages = document.getElementById('crawlStages');
+
+    _pollTimer = setInterval(async () => {
+        try {
+            const resp = await fetch('/api/status');
+            const st = await resp.json();
+            const p = st.progress_pct || 0;
+            fill.style.width = p + '%';
+            pct.textContent = p + '%';
+            detail.textContent = st.progress_msg || '';
+
+            if (st.output && st.output.length > 0) {
+                const lines = st.output.slice(-8);
+                stages.innerHTML = lines.map(function(l) {
+                    var cls = /done|✓/.test(l) ? 'stage-done' : 'stage-active';
+                    return '<div class="' + cls + '">' + l.substring(0, 80) + '</div>';
+                }).join('');
+            }
+
+            if (!st.running && st.stage === 'done') {
+                clearInterval(_pollTimer);
+                _pollTimer = null;
+                title.textContent = st.error ? '采集出错' : '采集完成！';
+                detail.textContent = st.error ? ('错误: ' + st.error) : '正在刷新页面...';
+                fill.style.width = '100%';
+                pct.textContent = '100%';
+                btn.classList.remove('disabled');
+                setTimeout(function() {
+                    window.location.reload();
+                }, st.error ? 5000 : 1500);
+            }
+        } catch(e) {
+            // Server might be restarting, keep polling
+        }
+    }, 1500);
 }
 
 // ===== Init =====
