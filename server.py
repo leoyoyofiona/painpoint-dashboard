@@ -196,6 +196,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._serve_json({"status": "ok"})
             elif p == "/api/user-requests":
                 self._handle_get_user_requests()
+            elif p == "/api/rankings":
+                self._handle_get_rankings()
+            elif p.startswith("/api/clusters/"):
+                cluster_id = p.split("/")[-1]
+                self._handle_get_cluster(cluster_id)
             elif p.startswith("/static/"):
                 self._serve_static(p)
             else:
@@ -478,6 +483,38 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             traceback.print_exc()
             self._serve_json({"total": 0, "requests": [], "error": str(e)}, 500)
+
+    def _handle_get_rankings(self):
+        """获取总排行榜和各分类排行榜"""
+        try:
+            from database import get_rankings_overall_and_by_category, DB_PATH
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            data = get_rankings_overall_and_by_category(conn, top_n=20)
+            conn.close()
+            self._serve_json(data)
+        except Exception as e:
+            traceback.print_exc()
+            self._serve_json({"error": str(e)}, 500)
+
+    def _handle_get_cluster(self, cluster_id):
+        """获取某个簇的详细信息"""
+        try:
+            cid = int(cluster_id)
+            from database import get_cluster_detail, DB_PATH
+            conn = sqlite3.connect(DB_PATH)
+            conn.row_factory = sqlite3.Row
+            data = get_cluster_detail(conn, cid)
+            conn.close()
+            if data is None:
+                self._serve_json({"error": "Cluster not found"}, 404)
+                return
+            self._serve_json(data)
+        except ValueError:
+            self._serve_json({"error": "Invalid cluster ID"}, 400)
+        except Exception as e:
+            traceback.print_exc()
+            self._serve_json({"error": str(e)}, 500)
 
     def log_message(self, *args):
         pass

@@ -334,6 +334,120 @@ def get_latest_rankings(conn, limit=50):
     return [dict(r) for r in rows], latest_date
 
 
+def get_rankings_overall_and_by_category(conn, top_n=20):
+    """获取总排行榜和各分类排行榜。
+    返回结构: {
+        "overall": [...],       # 总榜 top_n
+        "by_category": {        # 每个分类的 top_n
+            "work": [...],
+            "study": [...],
+            ...
+        },
+        "updated_at": "2026-07-06T..."
+    }
+    """
+    row = conn.execute(
+        "SELECT MAX(ranking_date) as latest FROM daily_rankings"
+    ).fetchone()
+    if not row or not row["latest"]:
+        return {"overall": [], "by_category": {}, "updated_at": None}
+
+    latest_date = row["latest"]
+
+    # 总榜
+    overall_rows = conn.execute(
+        """SELECT dr.rank, dr.score, dr.frequency_component, dr.recency_component,
+                  dr.feasibility_component,
+                  nc.id as cluster_id, nc.representative_text, nc.category,
+                  nc.member_count, nc.trend, nc.keywords
+           FROM daily_rankings dr
+           JOIN need_clusters nc ON dr.cluster_id = nc.id
+           WHERE dr.ranking_date = ?
+           ORDER BY dr.rank ASC
+           LIMIT ?""",
+        (latest_date, top_n)
+    ).fetchall()
+
+    overall = []
+    for r in overall_rows:
+        d = dict(r)
+        # 趋势标签映射
+        trend_map = {"increasing": "fire", "decreasing": "down", "stable": "stable", "new": "new"}
+        d["trend_icon"] = trend_map.get(d["trend"], "stable")
+        overall.append(d)
+
+    # 各分类榜
+    categories = [
+        "work", "study", "life", "health", "office",
+        "shopping", "travel", "finance", "internet", "phone",
+        "computer", "other"
+    ]
+
+    by_category = {}
+    for cat in categories:
+        cat_rows = conn.execute(
+            """SELECT dr.rank, dr.score, dr.frequency_component, dr.recency_component,
+                      dr.feasibility_component,
+                      nc.id as cluster_id, nc.representative_text, nc.category,
+                      nc.member_count, nc.trend, nc.keywords
+               FROM daily_rankings dr
+               JOIN need_clusters nc ON dr.cluster_id = nc.id
+               WHERE dr.ranking_date = ? AND nc.category = ?
+               ORDER BY dr.rank ASC
+               LIMIT ?""",
+            (latest_date, cat, top_n)
+        ).fetchall()
+
+        cat_list = []
+        for r in cat_rows:
+            d = dict(r)
+            trend_map = {"increasing": "fire", "decreasing": "down", "stable": "stable", "new": "new"}
+            d["trend_icon"] = trend_map.get(d["trend"], "stable")
+            cat_list.append(d)
+        by_category[cat] = cat_list
+
+    return {
+        "overall": overall,
+        "by_category": by_category,
+        "updated_at": latest_date
+    }
+
+
+def get_cluster_detail(conn, cluster_id):
+    """获取簇的详细信息，包含成员痛点列表"""
+    cluster_row = conn.execute(
+        """SELECT nc.*, dr.score, dr.rank, dr.frequency_component,
+                  dr.recency_component, dr.feasibility_component
+           FROM need_clusters nc
+           LEFT JOIN daily_rankings dr ON nc.id = dr.cluster_id
+              AND dr.ranking_date = (SELECT MAX(ranking_date) FROM daily_rankings)
+           WHERE nc.id = ?""",
+        (cluster_id,)
+    ).fetchone()
+
+    if not cluster_row:
+        return None
+
+    cluster = dict(cluster_row)
+
+    # 获取成员痛点（使用 LEFT JOIN 防止 pain_points 被清理后丢失关联）
+    members = conn.execute(
+        """SELECT pp.id, pp.description, pp.original_text, pp.inspiration,
+                  pp.keywords, pp.category, pp.feasibility, pp.extracted_at,
+                  p.platform, p.title as post_title, p.url as post_url
+           FROM cluster_members cm
+           LEFT JOIN pain_points pp ON cm.pain_point_id = pp.id
+           LEFT JOIN posts p ON pp.post_id = p.id
+           WHERE cm.cluster_id = ?
+           ORDER BY pp.extracted_at DESC
+           LIMIT 50""",
+        (cluster_id,)
+    ).fetchall()
+
+    cluster["members"] = [dict(m) for m in members]
+    return cluster
+
+
 # ============================================================
 # Collection Logs
 # ============================================================

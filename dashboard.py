@@ -807,6 +807,134 @@ body {
     .modal-body { padding: 20px; }
     .ur-item { min-width: 220px; }
 }
+
+/* ===== 排行榜视图 ===== */
+.btn-rankings {
+    display: flex; align-items: center; gap: 6px;
+    padding: 10px 22px; font-size: 15px; font-weight: 700;
+    border: none; border-radius: 24px; cursor: pointer;
+    color: #fff;
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 2px 12px rgba(16,185,129,0.3);
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+.btn-rankings:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(16,185,129,0.4); }
+.btn-rankings:active { transform: translateY(0); }
+.btn-rankings.active-view {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    box-shadow: 0 2px 12px rgba(99,102,241,0.35);
+}
+
+.ranking-view { display: none; }
+.ranking-view.active { display: block; }
+
+.rank-tabs {
+    display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 8px;
+    border-bottom: 2px solid #e5e7eb; margin-bottom: 20px;
+    -webkit-overflow-scrolling: touch;
+}
+.rank-tab {
+    padding: 7px 15px; font-size: 13px; font-weight: 600;
+    border: none; border-radius: 20px; cursor: pointer;
+    background: #f3f4f6; color: #6b7280;
+    white-space: nowrap; transition: all 0.2s;
+}
+.rank-tab:hover { background: #e5e7eb; }
+.rank-tab.active {
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff; box-shadow: 0 2px 8px rgba(99,102,241,0.3);
+}
+
+.rank-list { display: flex; flex-direction: column; gap: 8px; }
+.rank-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: 12px;
+    background: #fff; border: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.rank-item:hover { border-color: #6366f1; box-shadow: 0 2px 12px rgba(99,102,241,0.1); }
+.rank-item.top3 { border-left: 4px solid; }
+.rank-item.top3.rank-1 { border-left-color: #f59e0b; background: #fffbeb; }
+.rank-item.top3.rank-2 { border-left-color: #94a3b8; background: #f8fafc; }
+.rank-item.top3.rank-3 { border-left-color: #d97706; background: #fff7ed; }
+
+.rank-badge {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; border-radius: 50%;
+    font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.rank-1 .rank-badge { background: linear-gradient(135deg, #f59e0b, #d97706); font-size: 20px; }
+.rank-2 .rank-badge { background: linear-gradient(135deg, #94a3b8, #64748b); font-size: 18px; }
+.rank-3 .rank-badge { background: linear-gradient(135deg, #d97706, #b45309); font-size: 18px; }
+.rank-badge-normal { background: #e5e7eb; color: #6b7280; }
+
+.rank-body { flex: 1; min-width: 0; }
+.rank-title { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 2px; }
+.rank-keywords { font-size: 12px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rank-meta {
+    display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+.rank-count {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 12px;
+    background: #f3f4f6; font-size: 13px; font-weight: 700; color: #374151;
+}
+.rank-cat-tag {
+    padding: 3px 10px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; color: #6366f1; background: #ede9fe;
+}
+.rank-trend {
+    font-size: 13px; width: 24px; text-align: center;
+}
+.rank-trend-fire { color: #ef4444; }
+.rank-trend-new { color: #10b981; }
+.rank-trend-down { color: #9ca3af; }
+
+.rank-empty {
+    text-align: center; padding: 60px 20px; color: #9ca3af;
+}
+.rank-empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* 簇详情弹窗 */
+.cluster-detail-modal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5); z-index: 2000;
+    justify-content: center; align-items: center;
+}
+.cluster-detail-modal.active { display: flex; }
+.cluster-detail-box {
+    background: #fff; border-radius: 16px; padding: 28px;
+    max-width: 700px; width: 90%; max-height: 80vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+.cluster-detail-title { font-size: 20px; font-weight: 800; color: #1f2937; margin-bottom: 8px; }
+.cluster-detail-stats {
+    display: flex; gap: 16px; margin-bottom: 20px;
+    font-size: 14px; color: #6b7280;
+}
+.cluster-detail-stats strong { color: #1f2937; }
+.cluster-member {
+    padding: 10px 14px; margin-bottom: 8px; border-radius: 10px;
+    background: #f9fafb; border: 1px solid #e5e7eb;
+    font-size: 14px; color: #374151;
+}
+.cluster-member .member-src { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+.cluster-close-btn {
+    display: block; margin: 20px auto 0; padding: 10px 32px;
+    border: none; border-radius: 20px; background: #6366f1; color: #fff;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.cluster-close-btn:hover { background: #4f46e5; }
+
+@media (max-width: 640px) {
+    .rank-item { flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
+    .rank-meta { width: 100%; justify-content: flex-start; }
+    .rank-tabs { gap: 4px; }
+    .rank-tab { padding: 6px 10px; font-size: 12px; }
+    .btn-rankings { padding: 8px 16px; font-size: 14px; }
+}
 </style>
 </head>
 <body>
@@ -829,6 +957,9 @@ body {
             <div class="stat-mini">帖子 <strong id="statPosts">0</strong></div>
             <button class="btn-recrawl" id="recrawlBtn" onclick="triggerRefresh()">
                 <span class="spin-icon">🔄</span> 重新采集
+            </button>
+            <button class="btn-rankings" id="rankingsBtn" onclick="toggleRankings()">
+                🏆 排行榜
             </button>
             <button class="btn-submit" onclick="openModal()">
                 <span class="pulse-dot"></span> 我有诉求
@@ -894,6 +1025,21 @@ body {
 
     <!-- Filters -->
     <div class="filter-bar" id="catFilters"></div>
+
+    <!-- Ranking View -->
+    <div class="ranking-view" id="rankingView">
+        <div class="rank-tabs" id="rankTabs"></div>
+        <div class="rank-list" id="rankList"></div>
+        <div class="rank-empty" id="rankEmpty" style="display:none;">
+            <div class="rank-empty-icon">📊</div>
+            暂无排名数据，请先运行采集和注入流程
+        </div>
+    </div>
+
+    <!-- Cluster Detail Modal -->
+    <div class="cluster-detail-modal" id="clusterDetailModal" onclick="closeClusterDetailOnOverlay(event)">
+        <div class="cluster-detail-box" id="clusterDetailBox"></div>
+    </div>
 
     <!-- Pain Point Cards by Category -->
     <div id="cardContainer"></div>
@@ -1405,6 +1551,203 @@ function formatTime(isoStr) {
         if (diff < 604800) return Math.floor(diff / 86400) + '天前';
         return d.toLocaleDateString('zh-CN');
     } catch(e) { return ''; }
+}
+
+// ===== Rankings Feature =====
+let showRankings = false;
+let rankingsData = null;
+let rankingCat = 'overall';
+
+function toggleRankings() {
+    showRankings = !showRankings;
+    const btn = document.getElementById('rankingsBtn');
+    const rankView = document.getElementById('rankingView');
+    const cardContainer = document.getElementById('cardContainer');
+    const filterBar = document.getElementById('catFilters');
+    const emptyMsg = document.getElementById('emptyMsg');
+
+    if (showRankings) {
+        btn.classList.add('active-view');
+        btn.innerHTML = '📋 需求卡片';
+        rankView.classList.add('active');
+        cardContainer.style.display = 'none';
+        filterBar.style.display = 'none';
+        emptyMsg.style.display = 'none';
+        loadRankings();
+    } else {
+        btn.classList.remove('active-view');
+        btn.innerHTML = '🏆 排行榜';
+        rankView.classList.remove('active');
+        cardContainer.style.display = '';
+        filterBar.style.display = '';
+        renderCards();
+        document.getElementById('emptyMsg').style.display = 'none';
+    }
+}
+
+async function loadRankings() {
+    const rankList = document.getElementById('rankList');
+    const rankEmpty = document.getElementById('rankEmpty');
+    rankList.innerHTML = '<div class="rank-empty"><div class="rank-empty-icon">⏳</div>加载排行榜中...</div>';
+    rankEmpty.style.display = 'none';
+
+    try {
+        const resp = await fetch('/api/rankings');
+        rankingsData = await resp.json();
+        buildRankTabs();
+        renderRankings();
+    } catch (e) {
+        rankList.innerHTML = '';
+        rankEmpty.style.display = 'block';
+    }
+}
+
+function buildRankTabs() {
+    const tabsContainer = document.getElementById('rankTabs');
+    const catNames = { work:"工作职场", study:"学习考试", life:"日常生活", health:"医疗健康",
+        office:"办公文档", shopping:"购物消费", travel:"出行旅游", finance:"理财记账",
+        internet:"网络工具", phone:"手机应用", computer:"电脑软件", other:"其他" };
+    const catEmojis = { work:"💼", study:"📚", life:"🏠", health:"🏥", office:"📄",
+        shopping:"🛒", travel:"✈️", finance:"💰", internet:"🌐", phone:"📱",
+        computer:"💻", other:"📦" };
+
+    let tabsHtml = '<button class="rank-tab active" data-cat="overall" onclick="switchRankCat(\'overall\')">🏆 总榜</button>';
+    const catsWithData = new Set((rankingsData.by_category ? Object.keys(rankingsData.by_category) : [])
+        .filter(c => rankingsData.by_category[c] && rankingsData.by_category[c].length > 0));
+
+    const catOrder = ['work','study','life','health','office','shopping','travel','finance','internet','phone','computer','other'];
+    catOrder.forEach(cat => {
+        if (catsWithData.has(cat)) {
+            tabsHtml += '<button class="rank-tab" data-cat="' + cat + '" onclick="switchRankCat(\'' + cat + '\')">' +
+                (catEmojis[cat] || '') + ' ' + (catNames[cat] || cat) + '</button>';
+        }
+    });
+
+    tabsContainer.innerHTML = tabsHtml;
+}
+
+function switchRankCat(cat) {
+    rankingCat = cat;
+    document.querySelectorAll('.rank-tab').forEach(t => t.classList.remove('active'));
+    const btn = document.querySelector('.rank-tab[data-cat="' + cat + '"]');
+    if (btn) btn.classList.add('active');
+    renderRankings();
+}
+
+function renderRankings() {
+    const rankList = document.getElementById('rankList');
+    const rankEmpty = document.getElementById('rankEmpty');
+
+    let data;
+    if (rankingCat === 'overall') {
+        data = rankingsData.overall || [];
+    } else {
+        data = rankingsData.by_category && rankingsData.by_category[rankingCat] ? rankingsData.by_category[rankingCat] : [];
+    }
+
+    if (!data || data.length === 0) {
+        rankList.innerHTML = '';
+        rankEmpty.style.display = 'block';
+        return;
+    }
+    rankEmpty.style.display = 'none';
+
+    const catNames = { work:"工作", study:"学习", life:"生活", health:"健康",
+        office:"办公", shopping:"购物", travel:"出行", finance:"理财",
+        internet:"网络", phone:"手机", computer:"电脑", other:"其他" };
+
+    let html = '';
+    data.forEach((item, idx) => {
+        const rank = idx + 1;
+        const top3Class = rank <= 3 ? ' top3 rank-' + rank : '';
+        const badgeClass = rank <= 3 ? '' : ' rank-badge-normal';
+        const trendIcon = item.trend_icon === 'fire' ? '🔥' :
+                         item.trend_icon === 'new' ? '🆕' :
+                         item.trend_icon === 'down' ? '📉' : '➡️';
+        const trendClass = 'rank-trend-' + (item.trend_icon || 'stable');
+
+        const keywords = (item.keywords || '').split(',').slice(0, 4).map(k => '#' + k.trim()).join(' ');
+
+        html += '<div class="rank-item' + top3Class + '" onclick="showClusterDetail(' + item.cluster_id + ')">';
+        html += '<div class="rank-badge' + badgeClass + '">' + (rank <= 3 ? ['🥇','🥈','🥉'][rank-1] : rank) + '</div>';
+        html += '<div class="rank-body">';
+        html += '<div class="rank-title">' + escapeHtml(item.representative_text || '未命名需求') + '</div>';
+        html += '<div class="rank-keywords">' + keywords + '</div>';
+        html += '</div>';
+        html += '<div class="rank-meta">';
+        html += '<span class="rank-cat-tag">' + (catNames[item.category] || item.category) + '</span>';
+        html += '<span class="rank-count"><span style="font-size:14px;">👥</span> ' + (item.member_count || 0) + '</span>';
+        html += '<span class="rank-trend ' + trendClass + '">' + trendIcon + '</span>';
+        html += '</div>';
+        html += '</div>';
+    });
+
+    rankList.innerHTML = html;
+}
+
+async function showClusterDetail(clusterId) {
+    const modal = document.getElementById('clusterDetailModal');
+    const box = document.getElementById('clusterDetailBox');
+    modal.classList.add('active');
+    box.innerHTML = '<div class="rank-empty"><div class="rank-empty-icon">⏳</div>加载详情...</div>';
+
+    try {
+        const resp = await fetch('/api/clusters/' + clusterId);
+        const cluster = await resp.json();
+
+        if (cluster.error) {
+            box.innerHTML = '<div class="rank-empty"><div class="rank-empty-icon">❌</div>' + cluster.error + '</div>';
+            return;
+        }
+
+        const catNames = { work:"工作职场", study:"学习考试", life:"日常生活", health:"医疗健康",
+            office:"办公文档", shopping:"购物消费", travel:"出行旅游", finance:"理财记账",
+            internet:"网络工具", phone:"手机应用", computer:"电脑软件", other:"其他" };
+        const trendLabel = { increasing:"📈 上升趋势", decreasing:"📉 下降趋势", stable:"➡️ 保持稳定", new:"🆕 新兴需求" };
+
+        let html = '<div class="cluster-detail-title">' + escapeHtml(cluster.representative_text || '未命名需求') + '</div>';
+        html += '<div class="cluster-detail-stats">';
+        html += '<span>📊 需求量: <strong>' + (cluster.member_count || 0) + '</strong></span>';
+        html += '<span>📂 分类: <strong>' + (catNames[cluster.category] || cluster.category || '其他') + '</strong></span>';
+        html += '<span>' + (trendLabel[cluster.trend] || '➡️ 保持稳定') + '</span>';
+        html += '<span>⭐ 综合分: <strong>' + (cluster.score ? cluster.score.toFixed(2) : 'N/A') + '</strong></span>';
+        html += '</div>';
+
+        const members = cluster.members || [];
+        if (members.length > 0) {
+            html += '<div style="font-size:14px;font-weight:700;color:#374151;margin-bottom:10px;">📝 相关痛点 (' + members.length + '条):</div>';
+            members.forEach(m => {
+                const desc = m.description || m.inspiration || '(无描述)';
+                const src = m.platform ? ('来源: ' + m.platform) : '';
+                html += '<div class="cluster-member">';
+                html += escapeHtml(desc);
+                if (src) html += '<div class="member-src">' + src + '</div>';
+                html += '</div>';
+            });
+        }
+
+        html += '<button class="cluster-close-btn" onclick="closeClusterDetail()">关闭</button>';
+        box.innerHTML = html;
+    } catch (e) {
+        box.innerHTML = '<div class="rank-empty"><div class="rank-empty-icon">❌</div>加载失败</div>';
+    }
+}
+
+function closeClusterDetail() {
+    document.getElementById('clusterDetailModal').classList.remove('active');
+}
+
+function closeClusterDetailOnOverlay(e) {
+    if (e.target === document.getElementById('clusterDetailModal')) {
+        closeClusterDetail();
+    }
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 }
 
 // Load on page init
