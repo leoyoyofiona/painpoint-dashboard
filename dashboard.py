@@ -5,7 +5,7 @@ dashboard.py - 卡片式交互看板生成器
 import json
 from datetime import datetime
 from config import DASHBOARD_PATH, DASHBOARD_TOP_N
-from database import get_pain_points_with_posts, get_stats
+from database import get_pain_points_with_posts, get_stats, get_rankings_overall_and_by_category
 
 
 def generate_dashboard(conn):
@@ -42,6 +42,7 @@ def generate_dashboard(conn):
         "stats": stats,
         "cat_dist": cat_dist,
         "cat_names": cat_names,
+        "rankings": get_rankings_overall_and_by_category(conn),
         "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
@@ -1591,6 +1592,15 @@ async function loadRankings() {
     rankList.innerHTML = '<div class="rank-empty"><div class="rank-empty-icon">⏳</div>加载排行榜中...</div>';
     rankEmpty.style.display = 'none';
 
+    // 优先使用内联数据（更快、不依赖 API）
+    if (DATA.rankings && DATA.rankings.overall && DATA.rankings.overall.length > 0) {
+        rankingsData = DATA.rankings;
+        buildRankTabs();
+        renderRankings();
+        return;
+    }
+
+    // 降级到 API
     try {
         const resp = await fetch('/api/rankings');
         rankingsData = await resp.json();

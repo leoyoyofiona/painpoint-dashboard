@@ -229,13 +229,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 pass
 
     def _serve_dashboard(self):
-        if not os.path.exists(DASHBOARD):
-            try:
-                from main import run_full
-                with contextlib.redirect_stdout(io.StringIO()):
-                    run_full(verbose=False, skip_collect=False)
-            except Exception:
-                pass
+        """每次访问都重新生成看板，确保数据最新"""
+        try:
+            from database import get_db
+            from dashboard import generate_dashboard
+            conn = get_db()
+            dashboard_path = generate_dashboard(conn)
+            conn.close()
+        except Exception as e:
+            traceback.print_exc()
+            # 降级到缓存文件
+            if not os.path.exists(DASHBOARD):
+                self.send_error(503, f"Dashboard generation failed: {str(e)}")
+                return
 
         if not os.path.exists(DASHBOARD):
             self.send_error(503, "Dashboard not ready.")
@@ -246,7 +252,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
-        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
         self.end_headers()
         self.wfile.write(content)
 
