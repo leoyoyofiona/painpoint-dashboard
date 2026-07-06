@@ -54,8 +54,11 @@ def generate_dashboard(conn):
 
 
 def _build_html(data):
+    import html as html_mod
     data_json = json.dumps(data, ensure_ascii=False, default=str)
-    return _HTML_TEMPLATE.replace("__DATA_PLACEHOLDER__", data_json)
+    # Escape </ to prevent premature script tag closing
+    data_json = data_json.replace('</', '<\\/')
+    return _HTML_TEMPLATE.replace('__DATA_PLACEHOLDER__', data_json)
 
 
 _HTML_TEMPLATE = """<!DOCTYPE html>
@@ -1069,8 +1072,11 @@ body {
     大众痛点收集器 · 聚焦日常工作、学习、生活中的真实需求 · 你的每一个诉求都可能成为下一个项目 💡
 </div>
 
+<script type="application/json" id="dashboard-data">
+__DATA_PLACEHOLDER__
+</script>
 <script>
-const DATA = __DATA_PLACEHOLDER__;
+const DATA = JSON.parse(document.getElementById('dashboard-data').textContent);
 const catNames = DATA.cat_names || {};
 const groupedData = DATA.grouped || {};
 const catDist = DATA.cat_dist || {};
@@ -1621,14 +1627,14 @@ function buildRankTabs() {
         shopping:"🛒", travel:"✈️", finance:"💰", internet:"🌐", phone:"📱",
         computer:"💻", other:"📦" };
 
-    let tabsHtml = '<button class="rank-tab active" data-cat="overall" onclick="switchRankCat(\'overall\')">🏆 总榜</button>';
+    let tabsHtml = `<button class="rank-tab active" data-cat="overall" onclick="switchRankCat('overall')">🏆 总榜</button>`;
     const catsWithData = new Set((rankingsData.by_category ? Object.keys(rankingsData.by_category) : [])
         .filter(c => rankingsData.by_category[c] && rankingsData.by_category[c].length > 0));
 
     const catOrder = ['work','study','life','health','office','shopping','travel','finance','internet','phone','computer','other'];
     catOrder.forEach(cat => {
         if (catsWithData.has(cat)) {
-            tabsHtml += '<button class="rank-tab" data-cat="' + cat + '" onclick="switchRankCat(\'' + cat + '\')">' +
+            tabsHtml += `<button class="rank-tab" data-cat="${cat}" onclick="switchRankCat('${cat}')">` +
                 (catEmojis[cat] || '') + ' ' + (catNames[cat] || cat) + '</button>';
         }
     });
