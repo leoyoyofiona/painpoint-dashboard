@@ -229,16 +229,26 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 pass
 
     def _serve_dashboard(self):
-        """每次访问都重新生成看板，确保数据最新"""
+        """生成看板。如果数据库未初始化，先建表（不采集，避免超时）。"""
         try:
-            from database import get_db
+            from database import get_db, init_db
             from dashboard import generate_dashboard
             conn = get_db()
+
+            # 检查数据库是否已初始化
+            tables = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='pain_points'"
+            ).fetchone()
+            if not tables:
+                # 只建表，不采集数据（采集太慢会超时）
+                conn.close()
+                init_db()
+                conn = get_db()
+
             dashboard_path = generate_dashboard(conn)
             conn.close()
         except Exception as e:
             traceback.print_exc()
-            # 降级到缓存文件
             if not os.path.exists(DASHBOARD):
                 self.send_error(503, f"Dashboard generation failed: {str(e)}")
                 return
@@ -541,6 +551,14 @@ if __name__ == "__main__":
 
     scheduler = threading.Thread(target=scheduler_loop, daemon=True)
     scheduler.start()
+
+    # 确保数据库已初始化
+    try:
+        from database import init_db
+        init_db()
+        print("  数据库就绪", flush=True)
+    except Exception as e:
+        print(f"  数据库初始化失败: {e}", flush=True)
 
     # 预热 jieba（避免首次请求超时）
     try:
