@@ -14,4 +14,13 @@ services:
         value: 3.11.0
       - key: TZ
         value: Asia/Shanghai
+      - key: DATABASE_URL
+        fromDatabase:
+          name: painpoint-db
+          property: connectionString
     healthCheckPath: /api/health
+
+databases:
+  - name: painpoint-db
+    plan: free
+    region: singapore

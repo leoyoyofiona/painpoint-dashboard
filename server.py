@@ -447,6 +447,20 @@ class Handler(http.server.BaseHTTPRequestHandler):
             conn.commit()
             conn.close()
 
+            # 同步到 PostgreSQL（持久化，防止 Render 重启丢数据）
+            try:
+                import pg_store
+                if pg_store.is_pg_enabled():
+                    pg_store.insert_request(
+                        description=description,
+                        email=email,
+                        category=category,
+                        source="web",
+                        ip=ip,
+                    )
+            except Exception:
+                traceback.print_exc()
+
             result = {"message": "诉求已提交，感谢你的参与！", "category": category}
             if cluster_ok:
                 result["synced"] = True
@@ -459,8 +473,32 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._serve_json({"error": f"服务器错误: {e}"}, 500)
 
     def _handle_get_user_requests(self):
-        """获取用户提交的诉求（总数 + 最近20条）"""
+        """获取用户提交的诉求（总数 + 最近50条）"""
         try:
+            # 优先从 PostgreSQL 读取（持久化数据）
+            try:
+                import pg_store
+                if pg_store.is_pg_enabled():
+                    total = pg_store.get_total_count()
+                    pg_rows = pg_store.get_recent_requests(limit=50)
+                    requests = []
+                    for r in pg_rows:
+                        desc = r["description"]
+                        if desc and len(desc) > 200:
+                            desc = desc[:200] + "..."
+                        requests.append({
+                            "id": r["id"],
+                            "description": desc or "",
+                            "email": r["email"] or "",
+                            "category": r["category"] or "",
+                            "created_at": r["created_at"],
+                        })
+                    self._serve_json({"total": total, "requests": requests})
+                    return
+            except Exception:
+                traceback.print_exc()
+
+            # 降级：从 SQLite 读取
             db_path = os.path.join(BASE_DIR, "painpoints.db")
             conn = sqlite3.connect(db_path)
             conn.row_factory = sqlite3.Row
@@ -516,6 +554,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self._serve_json({"results": [], "hint": "请输入搜索关键词（邮箱或诉求内容）"}, 200)
                 return
 
+            # 优先从 PostgreSQL 搜索（持久化数据）
+            try:
+                import pg_store
+                if pg_store.is_pg_enabled():
+                    pg_results = pg_store.search_requests(query, limit=30)
+                    results = []
+                    for r in pg_results:
+                        desc = r["description"]
+                        if desc and len(desc) > 200:
+                            desc = desc[:200] + "..."
+                        results.append({
+                            "id": r["id"],
+                            "description": desc or "",
+                            "email": r["email"] or "",
+                            "category": r["category"] or "",
+                            "created_at": r["created_at"],
+                        })
+                    self._serve_json({"results": results, "query": query})
+                    return
+            except Exception:
+                traceback.print_exc()
+
+            # 降级：从 SQLite 搜索
             db_path = os.path.join(BASE_DIR, "painpoints.db")
             conn = sqlite3.connect(db_path)
             conn.row_factory = sqlite3.Row
@@ -619,9 +680,26 @@ if __name__ == "__main__":
     try:
         from database import init_db
         init_db()
-        print("  数据库就绪", flush=True)
+        print("  SQLite 数据库就绪", flush=True)
     except Exception as e:
-        print(f"  数据库初始化失败: {e}", flush=True)
+        print(f"  SQLite 数据库初始化失败: {e}", flush=True)
+
+    # 初始化 PostgreSQL 持久化（Render 部署时 DATABASE_URL 存在）
+    try:
+        import pg_store
+        if pg_store.is_pg_enabled():
+            pg_store.ensure_table()
+            # 从 SQLite 同步已有数据到 PostgreSQL
+            from database import get_db
+            sync_conn = get_db()
+            synced = pg_store.sync_from_sqlite(sync_conn)
+            sync_conn.close()
+            total = pg_store.get_total_count()
+            print(f"  PostgreSQL 持久化已启用 (共 {total} 条用户诉求)", flush=True)
+        else:
+            print("  PostgreSQL 未配置 (DATABASE_URL 未设置，用户诉求仅存 SQLite)", flush=True)
+    except Exception as e:
+        print(f"  PostgreSQL 初始化失败: {e}", flush=True)
 
     # 预热 jieba（避免首次请求超时）
     try:
