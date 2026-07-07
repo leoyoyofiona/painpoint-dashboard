@@ -197,7 +197,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                     }
                 self._serve_json(s)
             elif p == "/api/health":
-                self._serve_json({"status": "ok"})
+                try:
+                    import pg_store
+                    pg_status = "enabled" if pg_store.is_pg_enabled() else "disabled"
+                except Exception:
+                    pg_status = "error"
+                self._serve_json({"status": "ok", "pg": pg_status})
             elif p == "/api/user-requests":
                 self._handle_get_user_requests()
             elif p == "/api/search-requests":
